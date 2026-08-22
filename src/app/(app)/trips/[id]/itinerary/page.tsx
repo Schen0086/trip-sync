@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "@/components/back-button";
+import CollapsibleItineraryDay from "@/components/collapsible-itinerary-day";
 import ItineraryItemDetails from "@/components/itinerary-item-details";
 import {
   formatTripDay,
@@ -33,8 +34,7 @@ export default async function ItineraryPage({
   const { id } = await params;
   const query = await searchParams;
 
-  const supabase =
-    await createClient();
+  const supabase = await createClient();
 
   // Check authentication
   const { data, error } =
@@ -44,8 +44,7 @@ export default async function ItineraryPage({
     redirect("/login");
   }
 
-  const userId =
-    data.claims.sub;
+  const userId = data.claims.sub;
 
   // Load trip
   const {
@@ -77,6 +76,7 @@ export default async function ItineraryPage({
     );
   }
 
+  // Trip deleted or access removed
   if (!trip) {
     redirect("/dashboard");
   }
@@ -84,13 +84,7 @@ export default async function ItineraryPage({
   const isTripCreator =
     trip.owner_id === userId;
 
-  /*
-   * Load itinerary items directly.
-   *
-   * Do not embed profiles here.
-   * A failed embedded relationship query previously looked
-   * exactly like an empty itinerary because the error was ignored.
-   */
+  // Load itinerary items
   const {
     data: rawItemData,
     error: itemError,
@@ -113,7 +107,7 @@ export default async function ItineraryPage({
     (rawItemData ??
       []) as ItineraryItem[];
 
-  // Load authors separately
+  // Load itinerary authors
   const authorIds = [
     ...new Set(
       rawItems.map(
@@ -123,10 +117,7 @@ export default async function ItineraryPage({
   ];
 
   const authorMap =
-    new Map<
-      string,
-      ProfileSummary
-    >();
+    new Map<string, ProfileSummary>();
 
   let profileLoadError:
     | string
@@ -171,17 +162,20 @@ export default async function ItineraryPage({
     }
   }
 
-  // Attach author details
+  // Add author details to each item
   const items: ItineraryItem[] =
-    rawItems.map((item) => ({
-      ...item,
+    rawItems.map(
+      (item) => ({
+        ...item,
 
-      author:
-        authorMap.get(
-          item.created_by
-        ) ?? null,
-    }));
+        author:
+          authorMap.get(
+            item.created_by
+          ) ?? null,
+      })
+    );
 
+  // Separate planned items and suggestions
   const plannedItems =
     items.filter(
       (item) =>
@@ -196,9 +190,8 @@ export default async function ItineraryPage({
         "suggested"
     );
 
-  // Load votes for backlog cards
-  let votes: ItineraryVote[] =
-    [];
+  // Load backlog vote summaries
+  let votes: ItineraryVote[] = [];
 
   let voteLoadError:
     | string
@@ -235,14 +228,14 @@ export default async function ItineraryPage({
     }
   }
 
-  // Generate trip days
+  // Generate every day of the trip
   const tripDates =
     getTripDates(
       trip.start_date,
       trip.end_date
     );
 
-  // Sort confirmed items
+  // Sort confirmed itinerary items
   plannedItems.sort(
     (a, b) => {
       const aDate =
@@ -277,7 +270,7 @@ export default async function ItineraryPage({
           fallbackHref={`/trips/${trip.id}`}
         />
 
-        {/* Heading */}
+        {/* Page heading */}
         <header className="mt-8 border-b border-line pb-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -294,6 +287,7 @@ export default async function ItineraryPage({
               </p>
             </div>
 
+            {/* Itinerary actions */}
             <div className="flex flex-wrap gap-3">
               {trip.trip_type ===
                 "group" && (
@@ -341,18 +335,18 @@ export default async function ItineraryPage({
           </div>
         )}
 
-        {/* Database loading error */}
+        {/* Itinerary database error */}
         {itemError && (
           <div
             role="alert"
             className="mt-8 rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-text"
           >
-            Unable to load itinerary
-            items: {itemError.message}
+            Unable to load itinerary items:{" "}
+            {itemError.message}
           </div>
         )}
 
-        {/* Non-critical profile error */}
+        {/* Author loading warning */}
         {profileLoadError && (
           <div className="mt-4 rounded-xl border border-line bg-surface-soft px-4 py-3 text-sm text-muted">
             Itinerary items loaded, but
@@ -361,7 +355,7 @@ export default async function ItineraryPage({
           </div>
         )}
 
-        {/* Non-critical voting error */}
+        {/* Voting loading warning */}
         {voteLoadError && (
           <div className="mt-4 rounded-xl border border-line bg-surface-soft px-4 py-3 text-sm text-muted">
             Itinerary items loaded, but
@@ -382,7 +376,8 @@ export default async function ItineraryPage({
             organised by day.
           </p>
 
-          <div className="mt-8 space-y-8">
+          {/* Collapsible days */}
+          <div className="mt-8 space-y-4">
             {tripDates.map(
               (date, index) => {
                 const dayItems =
@@ -394,48 +389,51 @@ export default async function ItineraryPage({
                   );
 
                 return (
-                  <section
+                  <CollapsibleItineraryDay
                     key={date}
-                    className="grid gap-5 lg:grid-cols-[180px_1fr]"
+                    dayNumber={
+                      index + 1
+                    }
+                    dayLabel={formatTripDay(
+                      date
+                    )}
+                    itemCount={
+                      dayItems.length
+                    }
                   >
-                    {/* Day */}
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-                        Day {index + 1}
-                      </p>
-
-                      <h3 className="mt-1 font-semibold text-ink">
-                        {formatTripDay(
-                          date
-                        )}
-                      </h3>
-                    </div>
-
-                    {/* Items */}
-                    <div className="space-y-4">
-                      {dayItems.length ===
-                      0 ? (
-                        <div className="rounded-2xl border border-dashed border-line p-6 text-sm text-muted">
-                          Nothing planned
-                          for this day yet.
-                        </div>
-                      ) : (
-                        dayItems.map(
+                    {dayItems.length ===
+                    0 ? (
+                      <div className="rounded-xl border border-dashed border-line p-5 text-sm text-muted">
+                        Nothing planned
+                        for this day yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {dayItems.map(
                           (item) => {
                             const author =
                               getItemAuthor(
                                 item
                               );
 
+                            // Creator or original suggester can edit
+                            const canEditItem =
+                              isTripCreator ||
+                              (
+                                item.origin ===
+                                  "suggestion" &&
+                                item.created_by ===
+                                  userId
+                              );
+
                             return (
                               <article
-                                key={
-                                  item.id
-                                }
-                                className="rounded-2xl border border-line bg-surface p-6"
+                                key={item.id}
+                                className="rounded-2xl border border-line bg-surface-soft p-5 sm:p-6"
                               >
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                   <div>
+                                    {/* Item badges */}
                                     <div className="flex flex-wrap items-center gap-2">
                                       <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">
                                         {getItineraryTypeLabel(
@@ -445,18 +443,18 @@ export default async function ItineraryPage({
 
                                       {item.origin ===
                                         "suggestion" && (
-                                        <span className="rounded-full border border-line bg-surface-soft px-2.5 py-1 text-xs text-muted">
+                                        <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs text-muted">
                                           Group suggestion
                                         </span>
                                       )}
                                     </div>
 
+                                    {/* Item title */}
                                     <h4 className="mt-3 text-lg font-semibold text-ink">
-                                      {
-                                        item.title
-                                      }
+                                      {item.title}
                                     </h4>
 
+                                    {/* Item creator */}
                                     <p className="mt-1 text-xs text-subtle">
                                       {item.origin ===
                                       "suggestion"
@@ -471,10 +469,11 @@ export default async function ItineraryPage({
                                     </p>
                                   </div>
 
-                                  {isTripCreator && (
+                                  {/* Edit */}
+                                  {canEditItem && (
                                     <Link
-                                      href={`/trips/${trip.id}/itinerary/${item.id}/edit`}
-                                      className="text-sm font-medium text-brand-700 hover:text-brand-800"
+                                      href={`/trips/${trip.id}/itinerary/edit/${item.id}`}
+                                      className="text-sm font-medium text-brand-700 transition hover:text-brand-800"
                                     >
                                       Edit
                                     </Link>
@@ -487,19 +486,18 @@ export default async function ItineraryPage({
                               </article>
                             );
                           }
-                        )
-                      )}
-                    </div>
-                  </section>
+                        )}
+                      </div>
+                    )}
+                  </CollapsibleItineraryDay>
                 );
               }
             )}
           </div>
         </section>
 
-        {/* Suggestions */}
-        {trip.trip_type ===
-          "group" && (
+        {/* Suggestion backlog */}
+        {trip.trip_type === "group" && (
           <section className="mt-14 border-t border-line pt-10">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -522,8 +520,8 @@ export default async function ItineraryPage({
               </Link>
             </div>
 
-            {suggestions.length ===
-            0 ? (
+            {/* Empty backlog */}
+            {suggestions.length === 0 ? (
               <div className="mt-6 rounded-2xl border border-dashed border-line p-8 text-center">
                 <p className="font-medium text-ink">
                   Backlog is empty
@@ -542,6 +540,7 @@ export default async function ItineraryPage({
                 </Link>
               </div>
             ) : (
+              /* Suggestion cards */
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 {suggestions.map(
                   (item) => {
@@ -585,6 +584,16 @@ export default async function ItineraryPage({
                           "dont_mind"
                       ).length;
 
+                    // Creator or original suggester can edit
+                    const canEditItem =
+                      isTripCreator ||
+                      (
+                        item.origin ===
+                          "suggestion" &&
+                        item.created_by ===
+                          userId
+                      );
+
                     return (
                       <article
                         key={item.id}
@@ -599,9 +608,7 @@ export default async function ItineraryPage({
                             </span>
 
                             <h3 className="mt-4 text-lg font-semibold text-ink">
-                              {
-                                item.title
-                              }
+                              {item.title}
                             </h3>
 
                             <p className="mt-1 text-xs text-subtle">
@@ -615,12 +622,11 @@ export default async function ItineraryPage({
                             </p>
                           </div>
 
-                          {(isTripCreator ||
-                            item.created_by ===
-                              userId) && (
+                          {/* Edit suggestion */}
+                          {canEditItem && (
                             <Link
-                              href={`/trips/${trip.id}/itinerary/${item.id}/edit`}
-                              className="text-sm font-medium text-brand-700"
+                              href={`/trips/${trip.id}/itinerary/edit/${item.id}`}
+                              className="text-sm font-medium text-brand-700 transition hover:text-brand-800"
                             >
                               Edit
                             </Link>
@@ -654,7 +660,7 @@ export default async function ItineraryPage({
                           <div className="mt-4 flex justify-end">
                             <Link
                               href={`/trips/${trip.id}/voting#item-${item.id}`}
-                              className="text-sm font-medium text-brand-700"
+                              className="text-sm font-medium text-brand-700 transition hover:text-brand-800"
                             >
                               Vote →
                             </Link>
@@ -669,6 +675,7 @@ export default async function ItineraryPage({
           </section>
         )}
 
+        {/* Location attribution */}
         <p className="mt-10 text-center text-xs text-subtle">
           Location search powered by
           Geoapify and OpenStreetMap
