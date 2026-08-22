@@ -12,14 +12,26 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const userId = data.claims.sub;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, username, avatar_url")
+    .eq("id", userId)
+    .single();
+
   return (
     <main className="min-h-screen p-8">
       <div className="mx-auto max-w-5xl">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">
-              TripSync
+              Welcome, {profile?.display_name ?? "Traveller"}
             </h1>
+
+            <p className="mt-1 text-gray-600">
+              {data.claims.email}
+            </p>
 
             <p className="mt-1 text-gray-600">
               Logged in as {data.claims.email}

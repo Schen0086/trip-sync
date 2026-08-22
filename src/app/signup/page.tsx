@@ -39,6 +39,24 @@ export default async function SignupPage({
         <form action={signup} className="space-y-4">
           <div>
             <label
+                htmlFor="displayName"
+                className="mb-1 block font-medium"
+            >
+                Display name
+            </label>
+
+            <input
+                id="displayName"
+                name="displayName"
+                type="text"
+                required
+                minLength={2}
+                maxLength={50}
+                className="w-full rounded border px-3 py-2"
+            />
+          </div>  
+          <div>
+            <label
               htmlFor="email"
               className="mb-1 block font-medium"
             >

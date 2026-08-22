@@ -30,11 +30,14 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient();
 
+  const displayName = formData.get("displayName") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  if (!email || !password) {
-    redirect("/signup?error=Email and password are required");
+  if (!displayName || !email || !password) {
+    redirect(
+        "/signup?error=Display name, email and password are required"
+    );
   }
 
   if (password.length < 8) {
@@ -48,7 +51,10 @@ export async function signup(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${siteUrl}/auth/callback`,
+        emailRedirectTo: `${siteUrl}/auth/callback`,
+        data: {
+        display_name: displayName.trim(),
+        },
     },
   });
 
