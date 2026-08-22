@@ -2,21 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "@/components/back-button";
-import CollapsibleItineraryDay from "@/components/collapsible-itinerary-day";
-import ItineraryItemDetails from "@/components/itinerary-item-details";
+import ConfirmActionButton from "@/components/confirm-action-button";
 import {
-  formatTripDay,
-  getItemAuthor,
-  getItineraryItemDate,
-  getItineraryItemTime,
-  getItineraryTypeLabel,
-  getTripDates,
-  type ItineraryItem,
-  type ItineraryVote,
-  type ProfileSummary,
-} from "@/lib/itinerary";
+  addTripParticipant,
+  leaveTrip,
+  removeTripParticipant,
+} from "../actions";
+import {
+  formatTripDate,
+  getTripLifecycle,
+  getTripLifecycleLabel,
+} from "@/lib/trip-utils";
 
-type ItineraryPageProps = {
+type TripPageProps = {
   params: Promise<{
     id: string;
   }>;
@@ -27,17 +25,20 @@ type ItineraryPageProps = {
   }>;
 };
 
-export default async function ItineraryPage({
+type EligibleMember = {
+  userId: string;
+  displayName: string;
+  username: string | null;
+};
+
+export default async function TripPage({
   params,
   searchParams,
-}: ItineraryPageProps) {
+}: TripPageProps) {
   const { id } = await params;
+  const query = await searchParams;
 
-  const query =
-    await searchParams;
-
-  const supabase =
-    await createClient();
+  const supabase = await createClient();
 
   // Check authentication
   const { data, error } =
@@ -47,8 +48,7 @@ export default async function ItineraryPage({
     redirect("/login");
   }
 
-  const userId =
-    data.claims.sub;
+  const userId = data.claims.sub;
 
   // Load trip
   const {
@@ -60,14 +60,18 @@ export default async function ItineraryPage({
       id,
       name,
       destination,
+      description,
       start_date,
       end_date,
+      budget,
       trip_type,
-      owner_id,
       group_id,
+      owner_id,
+      status,
       groups (
         id,
-        name
+        name,
+        status
       )
     `)
     .eq("id", id)
@@ -75,257 +79,158 @@ export default async function ItineraryPage({
 
   if (tripError) {
     console.error(
-      "Failed to load itinerary trip:",
+      "Failed to load trip:",
       tripError
     );
   }
 
-  // Trip deleted or user lost access
+  // Deleted or unavailable trip
   if (!trip) {
     redirect("/dashboard");
   }
 
+  // Get group
+  const group = Array.isArray(
+    trip.groups
+  )
+    ? trip.groups[0]
+    : trip.groups;
+
+  // Check trip creator
   const isTripCreator =
     trip.owner_id === userId;
 
-  // Load itinerary items directly
+  // Load participants
   const {
-    data: rawItemData,
-    error: itemError,
+    data: participantRows,
+    error: participantError,
   } = await supabase
-    .from("itinerary_items")
-    .select("*")
-    .eq("trip_id", trip.id)
-    .order("created_at", {
+    .from("trip_participants")
+    .select(`
+      user_id,
+      joined_at,
+      profiles (
+        display_name,
+        username
+      )
+    `)
+    .eq("trip_id", id)
+    .order("joined_at", {
       ascending: true,
     });
 
-  if (itemError) {
+  if (participantError) {
     console.error(
-      "Failed to load itinerary items:",
-      itemError
+      "Failed to load trip participants:",
+      participantError
     );
   }
 
-  const rawItems =
-    (rawItemData ??
-      []) as ItineraryItem[];
+  const participantIds = new Set(
+    participantRows?.map(
+      (participant) =>
+        participant.user_id
+    ) ?? []
+  );
 
-  // Load authors separately
-  const authorIds = [
-    ...new Set(
-      rawItems.map(
-        (item) =>
-          item.created_by
-      )
-    ),
-  ];
+  const isCurrentUserAttending =
+    participantIds.has(userId);
 
-  const authorMap =
-    new Map<
-      string,
-      ProfileSummary
-    >();
-
-  let profileLoadError:
-    | string
-    | null = null;
-
-  if (authorIds.length > 0) {
-    const {
-      data: profiles,
-      error: profileError,
-    } = await supabase
-      .from("profiles")
-      .select(
-        "id, display_name, username"
-      )
-      .in(
-        "id",
-        authorIds
-      );
-
-    if (profileError) {
-      console.error(
-        "Failed to load itinerary authors:",
-        profileError
-      );
-
-      profileLoadError =
-        profileError.message;
-    } else {
-      profiles?.forEach(
-        (profile) => {
-          authorMap.set(
-            profile.id,
-            {
-              display_name:
-                profile.display_name ??
-                "Traveller",
-
-              username:
-                profile.username ??
-                null,
-            }
-          );
-        }
-      );
-    }
-  }
-
-  // Attach author details
-  const items: ItineraryItem[] =
-    rawItems.map(
-      (item) => ({
-        ...item,
-
-        author:
-          authorMap.get(
-            item.created_by
-          ) ?? null,
-      })
-    );
-
-  const plannedItems =
-    items.filter(
-      (item) =>
-        item.planning_status ===
-        "planned"
-    );
-
-  const suggestions =
-    items.filter(
-      (item) =>
-        item.planning_status ===
-        "suggested"
-    );
-
-  // Load votes for backlog summaries
-  let votes: ItineraryVote[] =
+  // Find group members not attending
+  const eligibleMembers: EligibleMember[] =
     [];
 
-  let voteLoadError:
-    | string
-    | null = null;
-
-  if (suggestions.length > 0) {
+  if (
+    isTripCreator &&
+    trip.trip_type === "group" &&
+    trip.group_id
+  ) {
     const {
-      data: voteData,
-      error: voteError,
+      data: groupMembers,
+      error: groupMembersError,
     } = await supabase
-      .from("itinerary_votes")
-      .select(
-        "item_id, user_id, reaction, preferred_date"
-      )
-      .in(
-        "item_id",
-        suggestions.map(
-          (item) => item.id
+      .from("group_members")
+      .select(`
+        user_id,
+        profiles (
+          display_name,
+          username
         )
+      `)
+      .eq(
+        "group_id",
+        trip.group_id
       );
 
-    if (voteError) {
+    if (groupMembersError) {
       console.error(
-        "Failed to load itinerary votes:",
-        voteError
+        "Failed to load group members:",
+        groupMembersError
       );
-
-      voteLoadError =
-        voteError.message;
-    } else {
-      votes =
-        (voteData ??
-          []) as ItineraryVote[];
     }
+
+    groupMembers?.forEach(
+      (member) => {
+        if (
+          participantIds.has(
+            member.user_id
+          )
+        ) {
+          return;
+        }
+
+        const profile =
+          Array.isArray(
+            member.profiles
+          )
+            ? member.profiles[0]
+            : member.profiles;
+
+        eligibleMembers.push({
+          userId: member.user_id,
+
+          displayName:
+            profile?.display_name ??
+            "Traveller",
+
+          username:
+            profile?.username ??
+            null,
+        });
+      }
+    );
   }
 
-  // Generate every trip day
-  const tripDates =
-    getTripDates(
+  // Calculate trip lifecycle
+  const lifecycle =
+    getTripLifecycle(
+      trip.status,
       trip.start_date,
       trip.end_date
     );
 
-  // Sort confirmed itinerary
-  plannedItems.sort(
-    (a, b) => {
-      const aDate =
-        getItineraryItemDate(a) ??
-        "9999-12-31";
+  const lifecycleLabel =
+    getTripLifecycleLabel(
+      lifecycle
+    );
 
-      const bDate =
-        getItineraryItemDate(b) ??
-        "9999-12-31";
+  const lifecycleClass =
+    lifecycle === "cancelled"
+      ? "border border-danger-border bg-danger-surface text-danger-text"
+      : lifecycle === "ongoing"
+        ? "bg-brand-50 text-brand-700"
+        : "border border-line bg-surface-soft text-muted";
 
-      if (aDate !== bDate) {
-        return aDate.localeCompare(
-          bDate
-        );
-      }
-
-      return (
-        getItineraryItemTime(a) ??
-        "99:99"
-      ).localeCompare(
-        getItineraryItemTime(b) ??
-          "99:99"
-      );
-    }
-  );
+  const participantCount =
+    participantRows?.length ?? 0;
 
   return (
     <main className="px-6 py-8">
       <div className="mx-auto max-w-6xl">
-        {/* Back */}
-        <BackButton
-          fallbackHref={`/trips/${trip.id}`}
-        />
+        {/* Back navigation */}
+        <BackButton fallbackHref="/dashboard" />
 
-        {/* Heading */}
-        <header className="mt-8 border-b border-line pb-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-brand-700">
-                {trip.name}
-              </p>
-
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink">
-                Itinerary
-              </h1>
-
-              <p className="mt-2 text-muted">
-                {trip.destination}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {trip.trip_type ===
-                "group" && (
-                <Link
-                  href={`/trips/${trip.id}/voting`}
-                  className="rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-hover"
-                >
-                  Voting
-                </Link>
-              )}
-
-              <Link
-                href={`/trips/${trip.id}/itinerary/new?mode=${
-                  isTripCreator
-                    ? "planned"
-                    : "suggested"
-                }&type=activity`}
-                className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
-              >
-                {isTripCreator
-                  ? "Add item"
-                  : "Suggest something"}
-              </Link>
-            </div>
-          </div>
-        </header>
-
-        {/* Action error */}
+        {/* Error message */}
         {query.error && (
           <div
             role="alert"
@@ -335,7 +240,7 @@ export default async function ItineraryPage({
           </div>
         )}
 
-        {/* Action success */}
+        {/* Success message */}
         {query.success && (
           <div
             role="status"
@@ -345,363 +250,498 @@ export default async function ItineraryPage({
           </div>
         )}
 
-        {/* Loading error */}
-        {itemError && (
-          <div
-            role="alert"
-            className="mt-8 rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-text"
-          >
-            Unable to load itinerary
-            items: {itemError.message}
-          </div>
-        )}
+        {/* Trip heading */}
+        <header className="mt-8 border-b border-line pb-8">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              {/* Trip badges */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${lifecycleClass}`}
+                >
+                  {lifecycleLabel}
+                </span>
 
-        {profileLoadError && (
-          <div className="mt-4 rounded-xl border border-line bg-surface-soft px-4 py-3 text-sm text-muted">
-            Itinerary items loaded,
-            but some author names
-            could not be loaded.
-          </div>
-        )}
+                <span className="rounded-full border border-line bg-surface-soft px-2.5 py-1 text-xs font-medium capitalize text-muted">
+                  {trip.trip_type}
+                </span>
 
-        {voteLoadError && (
-          <div className="mt-4 rounded-xl border border-line bg-surface-soft px-4 py-3 text-sm text-muted">
-            Itinerary items loaded,
-            but voting totals could
-            not be loaded.
-          </div>
-        )}
+                {group && (
+                  <Link
+                    href={`/groups/${group.id}`}
+                    className="rounded-full border border-line bg-surface-soft px-2.5 py-1 text-xs font-medium text-muted transition hover:text-ink"
+                  >
+                    {group.name}
+                  </Link>
+                )}
+              </div>
 
-        {/* Trip plan */}
-        <section className="mt-10">
-          <h2 className="text-2xl font-semibold tracking-tight text-ink">
-            Trip plan
+              {/* Trip title */}
+              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-ink">
+                {trip.name}
+              </h1>
+
+              <p className="mt-2 text-lg text-muted">
+                {trip.destination}
+              </p>
+            </div>
+
+            {/* Trip management */}
+            {isTripCreator && (
+              <Link
+                href={`/trips/${trip.id}/edit`}
+                className="shrink-0 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition hover:border-line-strong hover:bg-surface-hover"
+              >
+                Edit trip
+              </Link>
+            )}
+          </div>
+        </header>
+
+        {/* Trip summary */}
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Status */}
+          <div className="rounded-2xl border border-line bg-surface p-5">
+            <p className="text-sm text-muted">
+              Status
+            </p>
+
+            <p className="mt-2 font-medium text-ink">
+              {lifecycleLabel}
+            </p>
+          </div>
+
+          {/* Dates */}
+          <div className="rounded-2xl border border-line bg-surface p-5">
+            <p className="text-sm text-muted">
+              Dates
+            </p>
+
+            <p className="mt-2 font-medium text-ink">
+              {formatTripDate(
+                trip.start_date,
+                {
+                  includeYear: false,
+                }
+              )}{" "}
+              –{" "}
+              {formatTripDate(
+                trip.end_date
+              )}
+            </p>
+          </div>
+
+          {/* Budget */}
+          <div className="rounded-2xl border border-line bg-surface p-5">
+            <p className="text-sm text-muted">
+              {trip.trip_type ===
+              "group"
+                ? "Budget per person"
+                : "Budget"}
+            </p>
+
+            <p className="mt-2 font-medium text-ink">
+              {trip.budget !== null
+                ? `€${Number(
+                    trip.budget
+                  ).toLocaleString(
+                    "en-IE"
+                  )}`
+                : "Not set"}
+            </p>
+          </div>
+
+          {/* Travellers */}
+          <div className="rounded-2xl border border-line bg-surface p-5">
+            <p className="text-sm text-muted">
+              Travellers
+            </p>
+
+            <p className="mt-2 font-medium text-ink">
+              {participantCount}{" "}
+              {participantCount === 1
+                ? "person"
+                : "people"}
+            </p>
+          </div>
+        </section>
+
+        {/* Description */}
+        <section className="mt-6 rounded-2xl border border-line bg-surface p-6">
+          <h2 className="text-lg font-semibold text-ink">
+            About this trip
           </h2>
 
-          <p className="mt-1 text-muted">
-            Confirmed activities,
-            transport and
-            accommodation organised
-            by day.
+          <p className="mt-3 leading-7 text-muted">
+            {trip.description ||
+              "No description has been added yet."}
           </p>
+        </section>
 
-          {/* Collapsible days */}
-          <div className="mt-8 space-y-4">
-            {tripDates.map(
-              (date, index) => {
-                const dayItems =
-                  plannedItems.filter(
-                    (item) =>
-                      getItineraryItemDate(
-                        item
-                      ) === date
-                  );
+        {/* Participation status */}
+        {trip.trip_type === "group" && (
+          <section className="mt-10">
+            {isCurrentUserAttending ? (
+              <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-semibold text-ink">
+                    You&apos;re going
+                  </h2>
+
+                  <p className="mt-1 text-sm text-muted">
+                    This trip currently
+                    appears on your
+                    Dashboard.
+                  </p>
+                </div>
+
+                <form
+                  action={leaveTrip}
+                >
+                  <input
+                    type="hidden"
+                    name="tripId"
+                    value={trip.id}
+                  />
+
+                  <ConfirmActionButton
+                    message="Mark yourself as not going on this trip? You will remain in the group and can still view the trip."
+                    className="cursor-pointer rounded-xl border border-line bg-surface-soft px-4 py-2.5 text-sm font-medium text-ink transition hover:border-line-strong hover:bg-surface-hover"
+                  >
+                    Not going
+                  </ConfirmActionButton>
+                </form>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-line bg-surface p-6">
+                <h2 className="font-semibold text-ink">
+                  You&apos;re not
+                  attending
+                </h2>
+
+                <p className="mt-1 text-sm text-muted">
+                  You&apos;re still a
+                  member of the group
+                  and can view this trip,
+                  but it won&apos;t
+                  appear on your
+                  Dashboard.
+                </p>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Travellers */}
+        <section className="mt-10">
+          <div>
+            <h2 className="text-xl font-semibold text-ink">
+              Travellers
+            </h2>
+
+            <p className="mt-1 text-sm text-muted">
+              People currently marked
+              as attending this trip.
+            </p>
+          </div>
+
+          {/* Add traveller */}
+          {isTripCreator &&
+            trip.trip_type ===
+              "group" &&
+            eligibleMembers.length >
+              0 && (
+              <div className="mt-5 rounded-2xl border border-line bg-surface p-6">
+                <h3 className="font-semibold text-ink">
+                  Add traveller
+                </h3>
+
+                <p className="mt-1 text-sm text-muted">
+                  Select a member of{" "}
+                  {group?.name ??
+                    "this group"}{" "}
+                  who is attending.
+                </p>
+
+                <form
+                  action={
+                    addTripParticipant
+                  }
+                  className="mt-5 flex flex-col gap-3 sm:flex-row"
+                >
+                  <input
+                    type="hidden"
+                    name="tripId"
+                    value={trip.id}
+                  />
+
+                  <select
+                    name="userId"
+                    required
+                    defaultValue=""
+                    className="min-w-0 flex-1 rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+                  >
+                    <option
+                      value=""
+                      disabled
+                    >
+                      Select group member
+                    </option>
+
+                    {eligibleMembers.map(
+                      (member) => (
+                        <option
+                          key={
+                            member.userId
+                          }
+                          value={
+                            member.userId
+                          }
+                        >
+                          {
+                            member.displayName
+                          }
+
+                          {member.username
+                            ? ` (@${member.username})`
+                            : ""}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  <button
+                    type="submit"
+                    className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
+                  >
+                    Add traveller
+                  </button>
+                </form>
+              </div>
+            )}
+
+          {/* Everyone is attending */}
+          {isTripCreator &&
+            trip.trip_type ===
+              "group" &&
+            eligibleMembers.length ===
+              0 && (
+              <div className="mt-5 rounded-xl border border-line bg-surface-soft px-4 py-3 text-sm text-muted">
+                Every current group
+                member is already marked
+                as attending.
+              </div>
+            )}
+
+          {/* Participant list */}
+          <div className="mt-5 space-y-3">
+            {participantRows?.map(
+              (participant) => {
+                const profile =
+                  Array.isArray(
+                    participant.profiles
+                  )
+                    ? participant
+                        .profiles[0]
+                    : participant.profiles;
+
+                const displayName =
+                  profile?.display_name ??
+                  "Traveller";
+
+                const isCurrentUser =
+                  participant.user_id ===
+                  userId;
+
+                const isCreator =
+                  participant.user_id ===
+                  trip.owner_id;
 
                 return (
-                  <CollapsibleItineraryDay
-                    key={date}
-                    dayNumber={
-                      index + 1
+                  <div
+                    key={
+                      participant.user_id
                     }
-                    dayLabel={formatTripDay(
-                      date
-                    )}
-                    itemCount={
-                      dayItems.length
-                    }
+                    className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    {dayItems.length ===
-                    0 ? (
-                      <div className="rounded-xl border border-dashed border-line p-5 text-sm text-muted">
-                        Nothing planned
-                        for this day yet.
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {dayItems.map(
-                          (item) => {
-                            const author =
-                              getItemAuthor(
-                                item
-                              );
+                    {/* Traveller */}
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-ink">
+                          {displayName}
 
-                            /*
-                             * Direct items:
-                             * trip creator only.
-                             *
-                             * Suggested items:
-                             * trip creator or original suggester.
-                             */
-                            const canEditItem =
-                              isTripCreator ||
-                              (
-                                item.origin ===
-                                  "suggestion" &&
-                                item.created_by ===
-                                  userId
-                              );
+                          {isCurrentUser && (
+                            <span className="ml-1 text-muted">
+                              (You)
+                            </span>
+                          )}
+                        </p>
 
-                            return (
-                              <article
-                                key={
-                                  item.id
-                                }
-                                className="rounded-2xl border border-line bg-surface-soft p-5 sm:p-6"
-                              >
-                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                  <div>
-                                    {/* Type badges */}
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">
-                                        {getItineraryTypeLabel(
-                                          item.item_type
-                                        )}
-                                      </span>
-
-                                      {item.origin ===
-                                        "suggestion" && (
-                                        <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs text-muted">
-                                          Group
-                                          suggestion
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    {/* Title */}
-                                    <h4 className="mt-3 text-lg font-semibold text-ink">
-                                      {
-                                        item.title
-                                      }
-                                    </h4>
-
-                                    {/* Author */}
-                                    <p className="mt-1 text-xs text-subtle">
-                                      {item.origin ===
-                                      "suggestion"
-                                        ? "Suggested by"
-                                        : "Added by"}{" "}
-                                      {author?.display_name ??
-                                        "Traveller"}
-
-                                      {author?.username
-                                        ? ` (@${author.username})`
-                                        : ""}
-                                    </p>
-                                  </div>
-
-                                  {/* Edit */}
-                                  {canEditItem && (
-                                    <Link
-                                      href={`/trips/${trip.id}/itinerary/edit/${item.id}`}
-                                      className="text-sm font-medium text-brand-700 transition hover:text-brand-800"
-                                    >
-                                      Edit
-                                    </Link>
-                                  )}
-                                </div>
-
-                                <ItineraryItemDetails
-                                  item={
-                                    item
-                                  }
-                                />
-                              </article>
-                            );
-                          }
+                        {isCreator && (
+                          <span className="rounded-full border border-line bg-surface-soft px-2 py-0.5 text-xs text-subtle">
+                            Trip creator
+                          </span>
                         )}
                       </div>
-                    )}
-                  </CollapsibleItineraryDay>
+
+                      {profile?.username && (
+                        <p className="mt-1 text-sm text-subtle">
+                          @
+                          {
+                            profile.username
+                          }
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Creator can remove other travellers */}
+                    {isTripCreator &&
+                      !isCurrentUser &&
+                      trip.trip_type ===
+                        "group" && (
+                        <form
+                          action={
+                            removeTripParticipant
+                          }
+                        >
+                          <input
+                            type="hidden"
+                            name="tripId"
+                            value={
+                              trip.id
+                            }
+                          />
+
+                          <input
+                            type="hidden"
+                            name="userId"
+                            value={
+                              participant.user_id
+                            }
+                          />
+
+                          <ConfirmActionButton
+                            message={`Remove ${displayName} from this trip? They will remain a member of the group.`}
+                            className="cursor-pointer rounded-xl border border-danger-border bg-danger-surface px-3.5 py-2 text-sm font-medium text-danger-text transition hover:opacity-80"
+                          >
+                            Remove
+                          </ConfirmActionButton>
+                        </form>
+                      )}
+                  </div>
                 );
               }
             )}
           </div>
         </section>
 
-        {/* Suggestion backlog */}
-        {trip.trip_type ===
-          "group" && (
-          <section className="mt-14 border-t border-line pt-10">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-ink">
-                  Suggestion backlog
-                </h2>
+        {/* Planning tools */}
+        <section className="mt-12 border-t border-line pt-10">
+          <div>
+            <h2 className="text-xl font-semibold text-ink">
+              Plan your trip
+            </h2>
 
-                <p className="mt-1 text-muted">
-                  Ideas that haven&apos;t
-                  been added to the
-                  itinerary yet.
-                </p>
-              </div>
+            <p className="mt-1 text-sm text-muted">
+              Everything you need to
+              organise the trip.
+            </p>
+          </div>
 
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Itinerary */}
+            <Link
+              href={`/trips/${trip.id}/itinerary`}
+              className="rounded-2xl border border-line bg-surface p-5 transition hover:border-brand-500 hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
+            >
+              <h3 className="font-semibold text-ink">
+                Itinerary
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Plan activities,
+                transport and
+                accommodation day by
+                day.
+              </p>
+
+              <p className="mt-4 text-sm font-medium text-brand-700">
+                Open itinerary →
+              </p>
+            </Link>
+
+            {/* Voting */}
+            {trip.trip_type ===
+              "group" && (
               <Link
                 href={`/trips/${trip.id}/voting`}
-                className="text-sm font-medium text-brand-700 hover:text-brand-800"
+                className="rounded-2xl border border-line bg-surface p-5 transition hover:border-brand-500 hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
               >
-                Open group voting →
+                <h3 className="font-semibold text-ink">
+                  Group voting
+                </h3>
+
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  Vote on suggestions
+                  and preferred days.
+                </p>
+
+                <p className="mt-4 text-sm font-medium text-brand-700">
+                  Open voting →
+                </p>
               </Link>
+            )}
+
+            {/* Expenses */}
+            <div className="rounded-2xl border border-line bg-surface p-5">
+              <h3 className="font-semibold text-ink">
+                Expenses
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Track spending and
+                shared costs.
+              </p>
+
+              <p className="mt-4 text-xs font-medium text-subtle">
+                Coming soon
+              </p>
             </div>
 
-            {suggestions.length ===
-            0 ? (
-              <div className="mt-6 rounded-2xl border border-dashed border-line p-8 text-center">
-                <p className="font-medium text-ink">
-                  Backlog is empty
-                </p>
+            {/* Places */}
+            <div className="rounded-2xl border border-line bg-surface p-5">
+              <h3 className="font-semibold text-ink">
+                Places
+              </h3>
 
-                <p className="mt-2 text-sm text-muted">
-                  Add an idea for the
-                  group to vote on.
-                </p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Save restaurants,
+                attractions and places
+                to visit.
+              </p>
 
-                <Link
-                  href={`/trips/${trip.id}/itinerary/new?mode=suggested&type=activity`}
-                  className="mt-5 inline-block rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast"
-                >
-                  Suggest something
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {suggestions.map(
-                  (item) => {
-                    const author =
-                      getItemAuthor(
-                        item
-                      );
+              <p className="mt-4 text-xs font-medium text-subtle">
+                Coming soon
+              </p>
+            </div>
 
-                    const itemVotes =
-                      votes.filter(
-                        (vote) =>
-                          vote.item_id ===
-                          item.id
-                      );
+            {/* Packing */}
+            <div className="rounded-2xl border border-line bg-surface p-5">
+              <h3 className="font-semibold text-ink">
+                Packing
+              </h3>
 
-                    const yes =
-                      itemVotes.filter(
-                        (vote) =>
-                          vote.reaction ===
-                          "yes"
-                      ).length;
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Keep track of what to
+                bring.
+              </p>
 
-                    const no =
-                      itemVotes.filter(
-                        (vote) =>
-                          vote.reaction ===
-                          "no"
-                      ).length;
-
-                    const unsure =
-                      itemVotes.filter(
-                        (vote) =>
-                          vote.reaction ===
-                          "not_sure"
-                      ).length;
-
-                    const dontMind =
-                      itemVotes.filter(
-                        (vote) =>
-                          vote.reaction ===
-                          "dont_mind"
-                      ).length;
-
-                    const canEditItem =
-                      isTripCreator ||
-                      (
-                        item.origin ===
-                          "suggestion" &&
-                        item.created_by ===
-                          userId
-                      );
-
-                    return (
-                      <article
-                        key={item.id}
-                        className="rounded-2xl border border-line bg-surface p-6"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <span className="rounded-full border border-line bg-surface-soft px-2.5 py-1 text-xs font-medium text-muted">
-                              {getItineraryTypeLabel(
-                                item.item_type
-                              )}
-                            </span>
-
-                            <h3 className="mt-4 text-lg font-semibold text-ink">
-                              {
-                                item.title
-                              }
-                            </h3>
-
-                            <p className="mt-1 text-xs text-subtle">
-                              Suggested by{" "}
-                              {author?.display_name ??
-                                "Traveller"}
-
-                              {author?.username
-                                ? ` (@${author.username})`
-                                : ""}
-                            </p>
-                          </div>
-
-                          {canEditItem && (
-                            <Link
-                              href={`/trips/${trip.id}/itinerary/edit/${item.id}`}
-                              className="text-sm font-medium text-brand-700"
-                            >
-                              Edit
-                            </Link>
-                          )}
-                        </div>
-
-                        <ItineraryItemDetails
-                          item={item}
-                        />
-
-                        {/* Voting summary */}
-                        <div className="mt-5 border-t border-line pt-4">
-                          <div className="flex flex-wrap gap-2 text-sm text-muted">
-                            <span className="rounded-full border border-line bg-surface-soft px-2.5 py-1">
-                              👍 {yes}
-                            </span>
-
-                            <span className="rounded-full border border-line bg-surface-soft px-2.5 py-1">
-                              👎 {no}
-                            </span>
-
-                            <span className="rounded-full border border-line bg-surface-soft px-2.5 py-1">
-                              ? {unsure}
-                            </span>
-
-                            <span className="rounded-full border border-line bg-surface-soft px-2.5 py-1">
-                              ↔ {dontMind}
-                            </span>
-                          </div>
-
-                          <div className="mt-4 flex justify-end">
-                            <Link
-                              href={`/trips/${trip.id}/voting#item-${item.id}`}
-                              className="text-sm font-medium text-brand-700"
-                            >
-                              Vote →
-                            </Link>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  }
-                )}
-              </div>
-            )}
-          </section>
-        )}
-
-        <p className="mt-10 text-center text-xs text-subtle">
-          Location search powered by
-          Geoapify and OpenStreetMap
-          data.
-        </p>
+              <p className="mt-4 text-xs font-medium text-subtle">
+                Coming soon
+              </p>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );
