@@ -1,8 +1,5 @@
 import Link from "next/link";
-import {
-  notFound,
-  redirect,
-} from "next/navigation";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "@/components/back-button";
 import CopyCodeButton from "@/components/copy-code-button";
@@ -61,23 +58,25 @@ export default async function GroupPage({
       closed_at
     `)
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
+  // Group was deleted or user lost access
   if (!group) {
-    notFound();
+    redirect("/groups");
   }
 
   // Load current membership
   const { data: currentMembership } =
-    await supabase
-      .from("group_members")
-      .select("role")
-      .eq("group_id", id)
-      .eq("user_id", userId)
-      .single();
+  await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
 
+  // User was removed or left the group
   if (!currentMembership) {
-    notFound();
+    redirect("/groups");
   }
 
   const isOwner =
