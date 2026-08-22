@@ -1,26 +1,204 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * TripSync Design System
+ */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Brand */
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-brand-contrast: var(--brand-contrast);
+
+  /* Accent */
+  --color-sand-50: var(--sand-50);
+  --color-sand-100: var(--sand-100);
+  --color-sand-200: var(--sand-200);
+  --color-sand-300: var(--sand-300);
+  --color-sand-400: var(--sand-400);
+  --color-sand-500: var(--sand-500);
+
+  /* Surfaces */
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-hover: var(--surface-hover);
+
+  /* Text */
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+
+  /* Borders */
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  /* Messages */
+  --color-danger-surface: var(--danger-surface);
+  --color-danger-border: var(--danger-border);
+  --color-danger-text: var(--danger-text);
+
+  --color-success-surface: var(--success-surface);
+  --color-success-border: var(--success-border);
+  --color-success-text: var(--success-text);
+
+  /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+ * Light theme
+ */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Brand */
+  --brand-50: #eef8f4;
+  --brand-100: #d8eee5;
+  --brand-200: #b4ddce;
+  --brand-300: #84c5ae;
+  --brand-400: #53a98c;
+  --brand-500: #348d72;
+  --brand-600: #276f5b;
+  --brand-700: #215b4c;
+  --brand-800: #1d493e;
+  --brand-900: #193d35;
+  --brand-contrast: #ffffff;
+
+  /* Accent */
+  --sand-50: #fdf9f2;
+  --sand-100: #f8edd9;
+  --sand-200: #f0d8ad;
+  --sand-300: #e7bc79;
+  --sand-400: #dda052;
+  --sand-500: #cc8134;
+
+  /* Surfaces */
+  --canvas: #f7f8f5;
+  --surface: #ffffff;
+  --surface-soft: #f1f4f1;
+  --surface-hover: #e9eeea;
+
+  /* Text */
+  --ink: #18211c;
+  --muted: #69746e;
+  --subtle: #929c96;
+
+  /* Borders */
+  --line: #dfe5e1;
+  --line-strong: #cbd4ce;
+
+  /* Messages */
+  --danger-surface: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-text: #b91c1c;
+
+  --success-surface: #eef8f4;
+  --success-border: #b4ddce;
+  --success-text: #215b4c;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/*
+ * Dark theme
+ */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Brand */
+  --brand-50: #0f1f1a;
+  --brand-100: #153127;
+  --brand-200: #1d4938;
+  --brand-300: #27644d;
+  --brand-400: #338164;
+  --brand-500: #3ea078;
+  --brand-600: #46b889;
+  --brand-700: #63c99c;
+  --brand-800: #8ad9b6;
+  --brand-900: #b9ead3;
+  --brand-contrast: #07110d;
+
+  /* Accent */
+  --sand-50: #211b12;
+  --sand-100: #332717;
+  --sand-200: #49371e;
+  --sand-300: #6a4d27;
+  --sand-400: #96703a;
+  --sand-500: #c09452;
+
+  /* Surfaces */
+  --canvas: #0b0d0c;
+  --surface: #121513;
+  --surface-soft: #191d1a;
+  --surface-hover: #202521;
+
+  /* Text */
+  --ink: #f2f5f3;
+  --muted: #9ca8a1;
+  --subtle: #6f7a74;
+
+  /* Borders */
+  --line: #252b27;
+  --line-strong: #343c37;
+
+  /* Messages */
+  --danger-surface: #2a1214;
+  --danger-border: #5e2025;
+  --danger-text: #fca5a5;
+
+  --success-surface: #0f1f1a;
+  --success-border: #27644d;
+  --success-text: #8ad9b6;
+}
+
+/*
+ * Base styles
+ */
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    background: var(--canvas);
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: var(--brand-300);
+    color: var(--ink);
+  }
 }
