@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signup } from "@/app/login/actions";
+import PasswordInput from "@/components/password-input";
 
 type SignupPageProps = {
   searchParams: Promise<{
@@ -52,7 +53,11 @@ export default async function SignupPage({
         )}
 
         {/* Signup form */}
-        <form action={signup} className="mt-8 space-y-5">
+        <form
+          action={signup}
+          className="mt-8 space-y-5"
+        >
+          {/* Display name */}
           <div>
             <label
               htmlFor="displayName"
@@ -74,6 +79,7 @@ export default async function SignupPage({
             />
           </div>
 
+          {/* Email */}
           <div>
             <label
               htmlFor="email"
@@ -93,6 +99,7 @@ export default async function SignupPage({
             />
           </div>
 
+          {/* Password */}
           <div>
             <label
               htmlFor="password"
@@ -101,10 +108,9 @@ export default async function SignupPage({
               Password
             </label>
 
-            <input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               placeholder="At least 8 characters"
               minLength={8}
               required
@@ -117,6 +123,7 @@ export default async function SignupPage({
             </p>
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
             className="w-full cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
