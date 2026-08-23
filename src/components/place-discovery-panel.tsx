@@ -497,7 +497,7 @@ export default function PlaceDiscoveryPanel({
             htmlFor="place-name"
             className="mb-1.5 block text-sm font-medium text-ink"
           >
-            Name
+            Place Name
             <span className="ml-1 font-normal text-subtle">
               optional
             </span>
@@ -512,7 +512,7 @@ export default function PlaceDiscoveryPanel({
                 event.target.value
               )
             }
-            placeholder="Museum, restaurant name..."
+            placeholder="e.g. Louvre Museum, Hard Rock Cafe..."
             className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
           />
         </div>
