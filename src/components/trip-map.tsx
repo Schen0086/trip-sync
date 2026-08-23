@@ -6,13 +6,16 @@ import {
   useRef,
   useState,
 } from "react";
+
 import type {
   Map as MapLibreMap,
   Marker as MapLibreMarker,
 } from "maplibre-gl";
+
 import {
   formatTripDay,
 } from "@/lib/itinerary";
+
 import type {
   TripMapPoint,
   TripMapPointKind,
@@ -28,6 +31,7 @@ type TripMapProps = {
 type MapLibreLibrary =
   typeof import("maplibre-gl");
 
+// Marker label
 function getMarkerLabel(
   kind: TripMapPointKind
 ) {
@@ -46,18 +50,18 @@ function getMarkerLabel(
   }
 }
 
+// Marker colour
 function getMarkerBackground(
   kind: TripMapPointKind
 ) {
-  if (
-    kind === "saved"
-  ) {
-    return "var(--sand-500)";
+  if (kind === "saved") {
+    return "var(--brand-500)";
   }
 
   return "var(--brand-600)";
 }
 
+// Geoapify MapLibre style
 function getMapStyle(
   apiKey: string
 ) {
@@ -70,13 +74,13 @@ function getMapStyle(
       ? "dark-matter"
       : "osm-bright";
 
-  const base =
-    "https://" +
-    "maps.geoapify.com";
-
-  return `${base}/v1/styles/${style}/style.json?apiKey=${encodeURIComponent(
-    apiKey
-  )}`;
+  return (
+    "https://maps.geoapify.com" +
+    `/v1/styles/${style}/style.json` +
+    `?apiKey=${encodeURIComponent(
+      apiKey
+    )}`
+  );
 }
 
 export default function TripMap({
@@ -106,10 +110,15 @@ export default function TripMap({
   const [mapReady, setMapReady] =
     useState(false);
 
+  const [mapError, setMapError] =
+    useState<string | null>(
+      null
+    );
+
   const [filter, setFilter] =
     useState("all");
 
-  // Apply map filter
+  // Filter visible map points
   const filteredPoints =
     useMemo(() => {
       if (filter === "all") {
@@ -124,25 +133,24 @@ export default function TripMap({
         );
       }
 
-      // Day filter
       return points.filter(
         (point) => {
           if (
             point.kind ===
-            "saved" ||
+              "saved" ||
             !point.startDate
           ) {
             return false;
           }
 
-          const end =
+          const endDate =
             point.endDate ??
             point.startDate;
 
           return (
             filter >=
               point.startDate &&
-            filter <= end
+            filter <= endDate
           );
         }
       );
@@ -162,96 +170,158 @@ export default function TripMap({
     }
 
     let cancelled = false;
-    let observer:
+
+    let themeObserver:
       | MutationObserver
       | null = null;
 
     async function createMap() {
-      const maplibre =
-        await import(
-          "maplibre-gl"
+      try {
+        setMapError(null);
+        setMapReady(false);
+
+        const maplibre =
+          await import(
+            "maplibre-gl"
+          );
+
+        if (
+          cancelled ||
+          !containerRef.current
+        ) {
+          return;
+        }
+
+        /*
+         * MapLibre v6 uses a separate ESM worker.
+         * Next/Turbopack may otherwise resolve the worker
+         * to a Next.js chunk URL that returns HTML.
+         */
+        maplibre.setWorkerUrl(
+          "/maplibre/maplibre-gl-worker.mjs"
         );
 
-      if (
-        cancelled ||
-        !containerRef.current
-      ) {
-        return;
-      }
+        libraryRef.current =
+          maplibre;
 
-      libraryRef.current =
-        maplibre;
+        const firstPoint =
+          points[0];
 
-      const firstPoint =
-        points[0];
+        const map =
+          new maplibre.Map({
+            container:
+              containerRef.current,
 
-      const map =
-        new maplibre.Map({
-          container:
-            containerRef.current,
-
-          style:
-            getMapStyle(apiKey),
-
-          center:
-            firstPoint
-              ? [
-                  firstPoint.longitude,
-                  firstPoint.latitude,
-                ]
-              : [0, 20],
-
-          zoom:
-            firstPoint
-              ? 12
-              : 1.5,
-
-          attributionControl: {
-            compact: true,
-        },
-        });
-
-      map.addControl(
-        new maplibre.NavigationControl({
-          showCompass: false,
-        }),
-        "top-right"
-      );
-
-      map.on(
-        "load",
-        () => {
-          setMapReady(true);
-        }
-      );
-
-      mapRef.current = map;
-
-      // Follow TripSync light/dark theme
-      observer =
-        new MutationObserver(
-          () => {
-            if (!mapRef.current) {
-              return;
-            }
-
-            mapRef.current.setStyle(
+            style:
               getMapStyle(
                 apiKey
-              )
+              ),
+
+            center:
+              firstPoint
+                ? [
+                    firstPoint.longitude,
+                    firstPoint.latitude,
+                  ]
+                : [0, 20],
+
+            zoom:
+              firstPoint
+                ? 12
+                : 1.5,
+
+            attributionControl: {
+              compact: true,
+            },
+          });
+
+        map.addControl(
+          new maplibre.NavigationControl({
+            showCompass: false,
+          }),
+          "top-right"
+        );
+
+        // Map fully loaded
+        map.on(
+          "load",
+          () => {
+            setMapReady(true);
+            setMapError(null);
+
+            // Make sure MapLibre reads the final size
+            window.requestAnimationFrame(
+              () => {
+                map.resize();
+              }
             );
           }
         );
 
-      observer.observe(
-        document.documentElement,
-        {
-          attributes: true,
-          attributeFilter: [
-            "data-theme",
-          ],
-        }
-      );
+        // Surface real map errors
+        map.on(
+          "error",
+          (event) => {
+            console.error(
+              "MapLibre error:",
+              event.error
+            );
+
+            const message =
+              event.error?.message ??
+              "Unable to load map";
+
+            setMapError(
+              message
+            );
+          }
+        );
+
+        mapRef.current =
+          map;
+
+        // Change map style with TripSync theme
+        themeObserver =
+          new MutationObserver(
+            () => {
+              if (
+                !mapRef.current
+              ) {
+                return;
+              }
+
+              setMapReady(false);
+              setMapError(null);
+
+              mapRef.current.setStyle(
+                getMapStyle(
+                  apiKey
+                )
+              );
+            }
+          );
+
+        themeObserver.observe(
+          document.documentElement,
+          {
+            attributes: true,
+            attributeFilter: [
+              "data-theme",
+            ],
+          }
+        );
+      } catch (error) {
+        console.error(
+          "Failed to initialise map:",
+          error
+        );
+
+        setMapError(
+          error instanceof Error
+            ? error.message
+            : "Unable to initialise map"
+        );
+      }
     }
 
     createMap();
@@ -259,7 +329,7 @@ export default function TripMap({
     return () => {
       cancelled = true;
 
-      observer?.disconnect();
+      themeObserver?.disconnect();
 
       markersRef.current.forEach(
         (marker) =>
@@ -279,7 +349,7 @@ export default function TripMap({
     points,
   ]);
 
-  // Draw markers and fit map
+  // Draw markers
   useEffect(() => {
     const map =
       mapRef.current;
@@ -295,7 +365,7 @@ export default function TripMap({
       return;
     }
 
-    // Clear old markers
+    // Remove old markers
     markersRef.current.forEach(
       (marker) =>
         marker.remove()
@@ -315,7 +385,7 @@ export default function TripMap({
 
     filteredPoints.forEach(
       (point) => {
-        // Marker
+        // Marker element
         const element =
           document.createElement(
             "button"
@@ -454,8 +524,12 @@ export default function TripMap({
               point.longitude,
               point.latitude,
             ])
-            .setPopup(popup)
-            .addTo(map);
+            .setPopup(
+              popup
+            )
+            .addTo(
+              map
+            );
 
         markersRef.current.push(
           marker
@@ -468,7 +542,7 @@ export default function TripMap({
       }
     );
 
-    // Focus map
+    // One marker
     if (
       filteredPoints.length ===
       1
@@ -481,6 +555,7 @@ export default function TripMap({
           point.longitude,
           point.latitude,
         ],
+
         zoom: 14,
         duration: 500,
       });
@@ -488,6 +563,7 @@ export default function TripMap({
       return;
     }
 
+    // Multiple markers
     map.fitBounds(
       bounds,
       {
@@ -501,22 +577,27 @@ export default function TripMap({
     mapReady,
   ]);
 
+  // Missing map API key
   if (!apiKey) {
     return (
-      <div className="rounded-2xl border border-line bg-surface p-8 text-center">
-        <p className="font-medium text-ink">
+      <div className="rounded-2xl border border-danger-border bg-danger-surface p-8 text-center">
+        <p className="font-medium text-danger-text">
           Map is not configured
         </p>
 
         <p className="mt-2 text-sm text-muted">
-          Add
-          NEXT_PUBLIC_GEOAPIFY_MAP_KEY
-          to your environment variables.
+          Add{" "}
+          <code>
+            NEXT_PUBLIC_GEOAPIFY_MAP_KEY
+          </code>{" "}
+          to .env.local and restart
+          the development server.
         </p>
       </div>
     );
   }
 
+  // Nothing to map
   if (points.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center">
@@ -572,7 +653,9 @@ export default function TripMap({
               key={date}
               type="button"
               onClick={() =>
-                setFilter(date)
+                setFilter(
+                  date
+                )
               }
               title={formatTripDay(
                 date
@@ -589,7 +672,7 @@ export default function TripMap({
         )}
       </div>
 
-      {/* Filter result count */}
+      {/* Visible location count */}
       <p className="mb-3 text-xs text-subtle">
         {filteredPoints.length}{" "}
         {filteredPoints.length === 1
@@ -599,14 +682,41 @@ export default function TripMap({
       </p>
 
       {/* Map */}
-      <div
-        ref={containerRef}
-        className={
-          large
-            ? "h-[70vh] min-h-[500px] w-full overflow-hidden rounded-2xl border border-line"
-            : "h-[420px] w-full overflow-hidden rounded-2xl border border-line"
-        }
-      />
+      <div className="relative">
+        <div
+          ref={containerRef}
+          className={
+            large
+              ? "h-[70vh] min-h-[500px] w-full overflow-hidden rounded-2xl border border-line"
+              : "h-[420px] w-full overflow-hidden rounded-2xl border border-line"
+          }
+        />
+
+        {/* Loading */}
+        {!mapReady &&
+          !mapError && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-surface">
+              <p className="text-sm text-muted">
+                Loading map...
+              </p>
+            </div>
+          )}
+
+        {/* Error */}
+        {mapError && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-danger-border bg-danger-surface p-8 text-center">
+            <div className="max-w-md">
+              <p className="font-semibold text-danger-text">
+                Unable to load map
+              </p>
+
+              <p className="mt-2 break-words text-sm leading-6 text-muted">
+                {mapError}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Legend */}
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">

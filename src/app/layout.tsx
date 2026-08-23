@@ -6,7 +6,10 @@ import {
   Geist_Mono,
 } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
+
+// MapLibre global styles
 import "maplibre-gl/dist/maplibre-gl.css";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -39,10 +42,10 @@ export default async function RootLayout({
   let theme: Theme =
     "light";
 
-  // Check signed-in user
   const supabase =
     await createClient();
 
+  // Check signed-in user
   const { data } =
     await supabase.auth.getClaims();
 
