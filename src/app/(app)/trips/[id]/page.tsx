@@ -709,21 +709,44 @@ export default async function TripPage({
             </div>
 
             {/* Places */}
-            <div className="rounded-2xl border border-line bg-surface p-5">
+            <Link
+              href={`/trips/${trip.id}/places`}
+              className="rounded-2xl border border-line bg-surface p-5 transition hover:border-brand-500 hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
+            >
               <h3 className="font-semibold text-ink">
                 Places
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-muted">
-                Save restaurants,
-                attractions and places
-                to visit.
+                Discover restaurants,
+                attractions, nightlife
+                and things to do.
               </p>
 
-              <p className="mt-4 text-xs font-medium text-subtle">
-                Coming soon
+              <p className="mt-4 text-sm font-medium text-brand-700">
+                Explore places →
               </p>
-            </div>
+            </Link>
+
+            {/* Map */}
+            <Link
+              href={`/trips/${trip.id}/map`}
+              className="rounded-2xl border border-line bg-surface p-5 transition hover:border-brand-500 hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
+            >
+              <h3 className="font-semibold text-ink">
+                Trip map
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-muted">
+                View saved places and
+                itinerary locations on
+                one interactive map.
+              </p>
+
+              <p className="mt-4 text-sm font-medium text-brand-700">
+                Open map →
+              </p>
+            </Link>
 
             {/* Packing */}
             <div className="rounded-2xl border border-line bg-surface p-5">
