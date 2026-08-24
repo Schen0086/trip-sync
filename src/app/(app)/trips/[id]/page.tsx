@@ -382,7 +382,7 @@ export default async function TripPage({
             trip.end_date
           }
         />
-        
+
         {/* Description */}
         <section className="mt-6 rounded-2xl border border-line bg-surface p-6">
           <h2 className="text-lg font-semibold text-ink">
@@ -710,20 +710,24 @@ export default async function TripPage({
             )}
 
             {/* Expenses */}
-            <div className="rounded-2xl border border-line bg-surface p-5">
+            <Link
+              href={`/trips/${trip.id}/expenses`}
+              className="rounded-2xl border border-line bg-surface p-5 transition hover:border-brand-500 hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
+            >
               <h3 className="font-semibold text-ink">
                 Expenses
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-muted">
-                Track spending and
-                shared costs.
+                Track spending, split
+                costs and see who owes
+                whom.
               </p>
 
-              <p className="mt-4 text-xs font-medium text-subtle">
-                Coming soon
+              <p className="mt-4 text-sm font-medium text-brand-700">
+                Open expenses →
               </p>
-            </div>
+            </Link>
 
             {/* Places */}
             <Link
@@ -766,20 +770,24 @@ export default async function TripPage({
             </Link>
 
             {/* Packing */}
-            <div className="rounded-2xl border border-line bg-surface p-5">
+            <Link
+              href={`/trips/${trip.id}/packing`}
+              className="rounded-2xl border border-line bg-surface p-5 transition hover:border-brand-500 hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
+            >
               <h3 className="font-semibold text-ink">
                 Packing
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-muted">
-                Keep track of what to
-                bring.
+                Manage must-have,
+                personal and shared
+                packing lists.
               </p>
 
-              <p className="mt-4 text-xs font-medium text-subtle">
-                Coming soon
+              <p className="mt-4 text-sm font-medium text-brand-700">
+                Open packing →
               </p>
-            </div>
+            </Link>
           </div>
         </section>
       </div>
