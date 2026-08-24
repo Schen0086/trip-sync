@@ -5,6 +5,10 @@ import BackButton from "@/components/back-button";
 import CollapsibleItineraryDay from "@/components/collapsible-itinerary-day";
 import ItineraryItemDetails from "@/components/itinerary-item-details";
 import {
+  ItineraryWeatherNotice,
+  TripWeatherProvider,
+} from "@/components/trip-weather";
+import {
   formatTripDay,
   getItemAuthor,
   getItineraryItemDate,
@@ -364,11 +368,25 @@ export default async function ItineraryPage({
           </div>
         )}
 
-        {/* Trip plan */}
-        <section className="mt-10">
-          <h2 className="text-2xl font-semibold tracking-tight text-ink">
-            Trip plan
-          </h2>
+        <TripWeatherProvider
+          tripId={trip.id}
+          destination={
+            trip.destination
+          }
+          startDate={
+            trip.start_date
+          }
+          endDate={
+            trip.end_date
+          }
+        >
+          <ItineraryWeatherNotice />
+
+          {/* Trip plan */}
+          <section className="mt-10">
+            <h2 className="text-2xl font-semibold tracking-tight text-ink">
+              Trip plan
+            </h2>
 
           <p className="mt-1 text-muted">
             Confirmed activities,
@@ -397,6 +415,7 @@ export default async function ItineraryPage({
                     dayLabel={formatTripDay(
                       date
                     )}
+                    date={date}
                     itemCount={
                       dayItems.length
                     }
@@ -495,6 +514,7 @@ export default async function ItineraryPage({
             )}
           </div>
         </section>
+        </TripWeatherProvider>
 
         {/* Suggestion backlog */}
         {trip.trip_type === "group" && (

@@ -5,9 +5,14 @@ import {
   type ReactNode,
 } from "react";
 
+import {
+  ItineraryDayWeather,
+} from "@/components/trip-weather";
+
 type CollapsibleItineraryDayProps = {
   dayNumber: number;
   dayLabel: string;
+  date: string;
   itemCount: number;
   children: ReactNode;
 };
@@ -15,6 +20,7 @@ type CollapsibleItineraryDayProps = {
 export default function CollapsibleItineraryDay({
   dayNumber,
   dayLabel,
+  date,
   itemCount,
   children,
 }: CollapsibleItineraryDayProps) {
@@ -28,7 +34,8 @@ export default function CollapsibleItineraryDay({
         type="button"
         onClick={() =>
           setOpen(
-            (current) => !current
+            (current) =>
+              !current
           )
         }
         aria-expanded={open}
@@ -44,7 +51,13 @@ export default function CollapsibleItineraryDay({
           </h3>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
+          {/* Daily weather */}
+          <ItineraryDayWeather
+            date={date}
+          />
+
+          {/* Item count */}
           <span className="text-xs text-muted">
             {itemCount}{" "}
             {itemCount === 1

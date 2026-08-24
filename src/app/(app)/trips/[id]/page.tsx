@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import BackButton from "@/components/back-button";
 import ConfirmActionButton from "@/components/confirm-action-button";
 import {
+  TripWeatherPanel,
+} from "@/components/trip-weather";
+import {
   addTripParticipant,
   leaveTrip,
   removeTripParticipant,
@@ -366,6 +369,20 @@ export default async function TripPage({
           </div>
         </section>
 
+        {/* Weather */}
+        <TripWeatherPanel
+          tripId={trip.id}
+          destination={
+            trip.destination
+          }
+          startDate={
+            trip.start_date
+          }
+          endDate={
+            trip.end_date
+          }
+        />
+        
         {/* Description */}
         <section className="mt-6 rounded-2xl border border-line bg-surface p-6">
           <h2 className="text-lg font-semibold text-ink">
