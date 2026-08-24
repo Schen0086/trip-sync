@@ -5,13 +5,21 @@ export type ItineraryItemType =
 
 export type ItineraryPlanningStatus =
   | "suggested"
-  | "planned";
+  | "planned"
+  | "rejected"
+  | "archived";
 
 export type SuggestionReaction =
   | "yes"
   | "no"
   | "not_sure"
   | "dont_mind";
+
+export type SuggestionDisplayStatus =
+  | "suggested"
+  | "accepted"
+  | "rejected"
+  | "archived";
 
 export type ProfileSummary = {
   display_name: string;
@@ -23,66 +31,174 @@ export type ItineraryItem = {
   trip_id: string;
   created_by: string;
 
-  item_type: ItineraryItemType;
-  planning_status: ItineraryPlanningStatus;
-  origin: "direct" | "suggestion";
+  item_type:
+    ItineraryItemType;
+
+  planning_status:
+    ItineraryPlanningStatus;
+
+  origin:
+    | "direct"
+    | "suggestion";
 
   title: string;
-  description: string | null;
-  notes: string | null;
 
-  location_name: string | null;
-  address: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  description:
+    | string
+    | null;
 
-  scheduled_date: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  website_url: string | null;
+  notes:
+    | string
+    | null;
 
-  transport_mode: string | null;
-  provider: string | null;
-  reference_number: string | null;
+  location_name:
+    | string
+    | null;
 
-  departure_location: string | null;
-  departure_address: string | null;
-  departure_latitude: number | null;
-  departure_longitude: number | null;
-  departure_date: string | null;
-  departure_time: string | null;
-  departure_details: string | null;
+  address:
+    | string
+    | null;
 
-  arrival_location: string | null;
-  arrival_address: string | null;
-  arrival_latitude: number | null;
-  arrival_longitude: number | null;
-  arrival_date: string | null;
-  arrival_time: string | null;
-  arrival_details: string | null;
+  latitude:
+    | number
+    | null;
 
-  check_in_date: string | null;
-  check_in_time: string | null;
-  check_out_date: string | null;
-  check_out_time: string | null;
-  check_in_instructions: string | null;
+  longitude:
+    | number
+    | null;
 
-  booking_reference: string | null;
-  booking_url: string | null;
+  scheduled_date:
+    | string
+    | null;
+
+  start_time:
+    | string
+    | null;
+
+  end_time:
+    | string
+    | null;
+
+  website_url:
+    | string
+    | null;
+
+  transport_mode:
+    | string
+    | null;
+
+  provider:
+    | string
+    | null;
+
+  reference_number:
+    | string
+    | null;
+
+  departure_location:
+    | string
+    | null;
+
+  departure_address:
+    | string
+    | null;
+
+  departure_latitude:
+    | number
+    | null;
+
+  departure_longitude:
+    | number
+    | null;
+
+  departure_date:
+    | string
+    | null;
+
+  departure_time:
+    | string
+    | null;
+
+  departure_details:
+    | string
+    | null;
+
+  arrival_location:
+    | string
+    | null;
+
+  arrival_address:
+    | string
+    | null;
+
+  arrival_latitude:
+    | number
+    | null;
+
+  arrival_longitude:
+    | number
+    | null;
+
+  arrival_date:
+    | string
+    | null;
+
+  arrival_time:
+    | string
+    | null;
+
+  arrival_details:
+    | string
+    | null;
+
+  check_in_date:
+    | string
+    | null;
+
+  check_in_time:
+    | string
+    | null;
+
+  check_out_date:
+    | string
+    | null;
+
+  check_out_time:
+    | string
+    | null;
+
+  check_in_instructions:
+    | string
+    | null;
+
+  booking_reference:
+    | string
+    | null;
+
+  booking_url:
+    | string
+    | null;
 
   sort_order: number;
+
   created_at: string;
   updated_at: string;
 
-  // Loaded separately from itinerary_items
-  author?: ProfileSummary | null;
+  author?:
+    | ProfileSummary
+    | null;
 };
 
 export type ItineraryVote = {
   item_id: string;
   user_id: string;
-  reaction: SuggestionReaction;
-  preferred_date: string | null;
+
+  reaction:
+    SuggestionReaction;
+
+  preferred_date:
+    | string
+    | null;
 };
 
 // Read creator profile
@@ -92,16 +208,75 @@ export function getItemAuthor(
   return item.author ?? null;
 }
 
+// Convert database state into the
+// status people see in the UI.
+export function getSuggestionDisplayStatus(
+  item: ItineraryItem
+): SuggestionDisplayStatus | null {
+  if (
+    item.origin !==
+    "suggestion"
+  ) {
+    return null;
+  }
+
+  if (
+    item.planning_status ===
+    "planned"
+  ) {
+    return "accepted";
+  }
+
+  if (
+    item.planning_status ===
+    "rejected"
+  ) {
+    return "rejected";
+  }
+
+  if (
+    item.planning_status ===
+    "archived"
+  ) {
+    return "archived";
+  }
+
+  return "suggested";
+}
+
+export function getSuggestionStatusLabel(
+  status:
+    SuggestionDisplayStatus
+) {
+  switch (status) {
+    case "suggested":
+      return "Voting";
+
+    case "accepted":
+      return "Accepted";
+
+    case "rejected":
+      return "Rejected";
+
+    case "archived":
+      return "Archived";
+  }
+}
+
 // Read main itinerary date
 export function getItineraryItemDate(
   item: ItineraryItem
 ) {
-  if (item.item_type === "transport") {
+  if (
+    item.item_type ===
+    "transport"
+  ) {
     return item.departure_date;
   }
 
   if (
-    item.item_type === "accommodation"
+    item.item_type ===
+    "accommodation"
   ) {
     return item.check_in_date;
   }
@@ -113,12 +288,16 @@ export function getItineraryItemDate(
 export function getItineraryItemTime(
   item: ItineraryItem
 ) {
-  if (item.item_type === "transport") {
+  if (
+    item.item_type ===
+    "transport"
+  ) {
     return item.departure_time;
   }
 
   if (
-    item.item_type === "accommodation"
+    item.item_type ===
+    "accommodation"
   ) {
     return item.check_in_time;
   }
@@ -150,7 +329,10 @@ export function formatItineraryTime(
     return null;
   }
 
-  return time.slice(0, 5);
+  return time.slice(
+    0,
+    5
+  );
 }
 
 // Format date
@@ -159,12 +341,15 @@ export function formatItineraryDate(
 ) {
   return new Date(
     `${date}T00:00:00Z`
-  ).toLocaleDateString("en-IE", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  ).toLocaleDateString(
+    "en-IE",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    }
+  );
 }
 
 // Format shorter trip day
@@ -173,12 +358,15 @@ export function formatTripDay(
 ) {
   return new Date(
     `${date}T00:00:00Z`
-  ).toLocaleDateString("en-IE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone: "UTC",
-  });
+  ).toLocaleDateString(
+    "en-IE",
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      timeZone: "UTC",
+    }
+  );
 }
 
 // Generate every date in the trip
@@ -186,17 +374,22 @@ export function getTripDates(
   startDate: string,
   endDate: string
 ) {
-  const dates: string[] = [];
+  const dates:
+    string[] = [];
 
-  const current = new Date(
-    `${startDate}T00:00:00Z`
-  );
+  const current =
+    new Date(
+      `${startDate}T00:00:00Z`
+    );
 
-  const end = new Date(
-    `${endDate}T00:00:00Z`
-  );
+  const end =
+    new Date(
+      `${endDate}T00:00:00Z`
+    );
 
-  while (current <= end) {
+  while (
+    current <= end
+  ) {
     dates.push(
       current
         .toISOString()
@@ -204,7 +397,8 @@ export function getTripDates(
     );
 
     current.setUTCDate(
-      current.getUTCDate() + 1
+      current.getUTCDate() +
+        1
     );
   }
 

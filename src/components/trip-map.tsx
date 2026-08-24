@@ -16,52 +16,34 @@ import {
   formatTripDay,
 } from "@/lib/itinerary";
 
-import type {
-  TripMapPoint,
-  TripMapPointKind,
+import {
+  getMapPointCategoryLabel,
+  getPlaceStatusLabel,
+  MAP_POINT_CATEGORY_OPTIONS,
+  PLACE_STATUS_OPTIONS,
+  type MapPointCategory,
+  type PlacePlanningStatus,
+  type TripMapPoint,
+  type TripMapPointKind,
 } from "@/lib/places";
 
 type TripMapProps = {
   apiKey: string;
-  points: TripMapPoint[];
-  tripDates: string[];
+
+  points:
+    TripMapPoint[];
+
+  tripDates:
+    string[];
+
   large?: boolean;
 };
 
 type MapLibreLibrary =
-  typeof import("maplibre-gl");
+  typeof import(
+    "maplibre-gl"
+  );
 
-// Marker label
-function getMarkerLabel(
-  kind: TripMapPointKind
-) {
-  switch (kind) {
-    case "saved":
-      return "P";
-
-    case "activity":
-      return "A";
-
-    case "transport":
-      return "T";
-
-    case "accommodation":
-      return "H";
-  }
-}
-
-// Marker colour
-function getMarkerBackground(
-  kind: TripMapPointKind
-) {
-  if (kind === "saved") {
-    return "var(--brand-500)";
-  }
-
-  return "var(--brand-600)";
-}
-
-// Geoapify MapLibre style
 function getMapStyle(
   apiKey: string
 ) {
@@ -80,6 +62,234 @@ function getMapStyle(
     `?apiKey=${encodeURIComponent(
       apiKey
     )}`
+  );
+}
+
+function getMarkerIcon(
+  kind:
+    TripMapPointKind
+) {
+  switch (kind) {
+    case "saved":
+      return `
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 21s6-4.4 6-11a6 6 0 1 0-12 0c0 6.6 6 11 6 11Z"/>
+          <circle cx="12" cy="10" r="2"/>
+        </svg>
+      `;
+
+    case "activity":
+      return `
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="8"/>
+          <path d="m9 12 2 2 4-5"/>
+        </svg>
+      `;
+
+    case "transport":
+      return `
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 12h16"/>
+          <path d="m15 7 5 5-5 5"/>
+        </svg>
+      `;
+
+    case "accommodation":
+      return `
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m3 11 9-7 9 7"/>
+          <path d="M5 10v10h14V10"/>
+          <path d="M9 20v-6h6v6"/>
+        </svg>
+      `;
+  }
+}
+
+function getMarkerAppearance(
+  status:
+    PlacePlanningStatus
+) {
+  if (
+    status ===
+    "planned"
+  ) {
+    return {
+      background:
+        "var(--brand-600, #326b5c)",
+
+      color:
+        "var(--brand-contrast, #ffffff)",
+    };
+  }
+
+  if (
+    status ===
+    "voting"
+  ) {
+    return {
+      background:
+        "var(--brand-500, #4b8373)",
+
+      color:
+        "var(--brand-contrast, #ffffff)",
+    };
+  }
+
+  if (
+    status ===
+    "rejected"
+  ) {
+    return {
+      background:
+        "var(--danger-text, #b42318)",
+
+      color:
+        "#ffffff",
+    };
+  }
+
+  if (
+    status ===
+    "archived"
+  ) {
+    return {
+      background:
+        "var(--muted, #6b7280)",
+
+      color:
+        "#ffffff",
+    };
+  }
+
+  return {
+    background:
+      "var(--surface, #ffffff)",
+
+    color:
+      "var(--ink, #17201b)",
+  };
+}
+
+function MarkerLegendIcon({
+  kind,
+}: {
+  kind:
+    TripMapPointKind;
+}) {
+  if (
+    kind === "saved"
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="h-4 w-4"
+      >
+        <path d="M12 21s6-4.4 6-11a6 6 0 1 0-12 0c0 6.6 6 11 6 11Z" />
+        <circle
+          cx="12"
+          cy="10"
+          r="2"
+        />
+      </svg>
+    );
+  }
+
+  if (
+    kind ===
+    "transport"
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="h-4 w-4"
+      >
+        <path d="M4 12h16" />
+        <path d="m15 7 5 5-5 5" />
+      </svg>
+    );
+  }
+
+  if (
+    kind ===
+    "accommodation"
+  ) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="h-4 w-4"
+      >
+        <path d="m3 11 9-7 9 7" />
+        <path d="M5 10v10h14V10" />
+        <path d="M9 20v-6h6v6" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className="h-4 w-4"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="8"
+      />
+
+      <path d="m9 12 2 2 4-5" />
+    </svg>
   );
 }
 
@@ -105,61 +315,135 @@ export default function TripMap({
     );
 
   const markersRef =
-    useRef<MapLibreMarker[]>([]);
+    useRef<
+      MapLibreMarker[]
+    >([]);
 
-  const [mapReady, setMapReady] =
+  const markerByPointIdRef =
+    useRef<
+      Map<
+        string,
+        MapLibreMarker
+      >
+    >(new Map());
+
+  const [
+    mapReady,
+    setMapReady,
+  ] =
     useState(false);
 
-  const [mapError, setMapError] =
-    useState<string | null>(
-      null
-    );
+  const [
+    mapError,
+    setMapError,
+  ] =
+    useState<
+      string | null
+    >(null);
 
-  const [filter, setFilter] =
+  const [
+    filtersOpen,
+    setFiltersOpen,
+  ] =
+    useState(false);
+
+  const [
+    dayFilter,
+    setDayFilter,
+  ] =
     useState("all");
 
-  // Filter visible map points
-  const filteredPoints =
-    useMemo(() => {
-      if (filter === "all") {
-        return points;
-      }
+  const [
+    categoryFilter,
+    setCategoryFilter,
+  ] =
+    useState<
+      "all" |
+      MapPointCategory
+    >("all");
 
-      if (filter === "saved") {
-        return points.filter(
-          (point) =>
-            point.kind ===
-            "saved"
-        );
-      }
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] =
+    useState<
+      "all" |
+      PlacePlanningStatus
+    >("all");
 
-      return points.filter(
-        (point) => {
-          if (
-            point.kind ===
-              "saved" ||
-            !point.startDate
-          ) {
-            return false;
-          }
-
-          const endDate =
-            point.endDate ??
-            point.startDate;
-
-          return (
-            filter >=
-              point.startDate &&
-            filter <= endDate
-          );
-        }
+  // Desktop shows controls.
+  // Mobile starts collapsed.
+  useEffect(() => {
+    if (
+      window.matchMedia(
+        "(min-width: 768px)"
+      ).matches
+    ) {
+      setFiltersOpen(
+        true
       );
-    }, [
-      filter,
-      points,
-    ]);
+    }
+  }, []);
 
-  // Create MapLibre map
+  const filteredPoints =
+    useMemo(
+      () =>
+        points.filter(
+          (point) => {
+            if (
+              categoryFilter !==
+                "all" &&
+              point.category !==
+                categoryFilter
+            ) {
+              return false;
+            }
+
+            if (
+              statusFilter !==
+                "all" &&
+              point.status !==
+                statusFilter
+            ) {
+              return false;
+            }
+
+            if (
+              dayFilter !==
+              "all"
+            ) {
+              if (
+                !point.startDate
+              ) {
+                return false;
+              }
+
+              const endDate =
+                point.endDate ??
+                point.startDate;
+
+              if (
+                dayFilter <
+                  point.startDate ||
+                dayFilter >
+                  endDate
+              ) {
+                return false;
+              }
+            }
+
+            return true;
+          }
+        ),
+      [
+        points,
+        categoryFilter,
+        statusFilter,
+        dayFilter,
+      ]
+    );
+
+  // Create map
   useEffect(() => {
     if (
       !apiKey ||
@@ -169,16 +453,26 @@ export default function TripMap({
       return;
     }
 
-    let cancelled = false;
+    let cancelled =
+      false;
 
     let themeObserver:
       | MutationObserver
       | null = null;
 
+    let resizeObserver:
+      | ResizeObserver
+      | null = null;
+
     async function createMap() {
       try {
-        setMapError(null);
-        setMapReady(false);
+        setMapError(
+          null
+        );
+
+        setMapReady(
+          false
+        );
 
         const maplibre =
           await import(
@@ -192,11 +486,8 @@ export default function TripMap({
           return;
         }
 
-        /*
-         * MapLibre v6 uses a separate ESM worker.
-         * Next/Turbopack may otherwise resolve the worker
-         * to a Next.js chunk URL that returns HTML.
-         */
+        // Required by MapLibre v6
+        // with Next/Turbopack.
         maplibre.setWorkerUrl(
           "/maplibre/maplibre-gl-worker.mjs"
         );
@@ -223,7 +514,10 @@ export default function TripMap({
                     firstPoint.longitude,
                     firstPoint.latitude,
                   ]
-                : [0, 20],
+                : [
+                    0,
+                    20,
+                  ],
 
             zoom:
               firstPoint
@@ -237,28 +531,38 @@ export default function TripMap({
 
         map.addControl(
           new maplibre.NavigationControl({
-            showCompass: false,
+            showCompass:
+              false,
           }),
           "top-right"
         );
 
-        // Map fully loaded
+        function markReady() {
+          setMapReady(
+            true
+          );
+
+          setMapError(
+            null
+          );
+
+          window.requestAnimationFrame(
+            () => {
+              map.resize();
+            }
+          );
+        }
+
         map.on(
           "load",
-          () => {
-            setMapReady(true);
-            setMapError(null);
-
-            // Make sure MapLibre reads the final size
-            window.requestAnimationFrame(
-              () => {
-                map.resize();
-              }
-            );
-          }
+          markReady
         );
 
-        // Surface real map errors
+        map.on(
+          "style.load",
+          markReady
+        );
+
         map.on(
           "error",
           (event) => {
@@ -267,12 +571,10 @@ export default function TripMap({
               event.error
             );
 
-            const message =
-              event.error?.message ??
-              "Unable to load map";
-
             setMapError(
-              message
+              event.error
+                ?.message ??
+                "Unable to load map"
             );
           }
         );
@@ -280,7 +582,24 @@ export default function TripMap({
         mapRef.current =
           map;
 
-        // Change map style with TripSync theme
+        // Important when the map is
+        // inside collapsed sections.
+        resizeObserver =
+          new ResizeObserver(
+            () => {
+              window.requestAnimationFrame(
+                () => {
+                  map.resize();
+                }
+              );
+            }
+          );
+
+        resizeObserver.observe(
+          containerRef.current
+        );
+
+        // Match TripSync theme.
         themeObserver =
           new MutationObserver(
             () => {
@@ -290,8 +609,13 @@ export default function TripMap({
                 return;
               }
 
-              setMapReady(false);
-              setMapError(null);
+              setMapReady(
+                false
+              );
+
+              setMapError(
+                null
+              );
 
               mapRef.current.setStyle(
                 getMapStyle(
@@ -304,7 +628,9 @@ export default function TripMap({
         themeObserver.observe(
           document.documentElement,
           {
-            attributes: true,
+            attributes:
+              true,
+
             attributeFilter: [
               "data-theme",
             ],
@@ -317,7 +643,8 @@ export default function TripMap({
         );
 
         setMapError(
-          error instanceof Error
+          error instanceof
+            Error
             ? error.message
             : "Unable to initialise map"
         );
@@ -327,19 +654,26 @@ export default function TripMap({
     createMap();
 
     return () => {
-      cancelled = true;
+      cancelled =
+        true;
 
       themeObserver?.disconnect();
+      resizeObserver?.disconnect();
 
       markersRef.current.forEach(
         (marker) =>
           marker.remove()
       );
 
-      markersRef.current = [];
+      markersRef.current =
+        [];
+
+      markerByPointIdRef.current.clear();
 
       mapRef.current?.remove();
-      mapRef.current = null;
+
+      mapRef.current =
+        null;
 
       libraryRef.current =
         null;
@@ -365,13 +699,15 @@ export default function TripMap({
       return;
     }
 
-    // Remove old markers
     markersRef.current.forEach(
       (marker) =>
         marker.remove()
     );
 
-    markersRef.current = [];
+    markersRef.current =
+      [];
+
+    markerByPointIdRef.current.clear();
 
     if (
       filteredPoints.length ===
@@ -385,7 +721,11 @@ export default function TripMap({
 
     filteredPoints.forEach(
       (point) => {
-        // Marker element
+        const appearance =
+          getMarkerAppearance(
+            point.status
+          );
+
         const element =
           document.createElement(
             "button"
@@ -395,56 +735,95 @@ export default function TripMap({
           "button";
 
         element.title =
-          point.name;
+          `${point.name} — ${getPlaceStatusLabel(
+            point.status
+          )}`;
 
-        element.textContent =
-          getMarkerLabel(
+        element.setAttribute(
+          "aria-label",
+          element.title
+        );
+
+        element.innerHTML =
+          getMarkerIcon(
             point.kind
           );
 
         element.style.width =
-          "30px";
+          "34px";
 
         element.style.height =
-          "30px";
+          "34px";
+
+        element.style.display =
+          "flex";
+
+        element.style.alignItems =
+          "center";
+
+        element.style.justifyContent =
+          "center";
 
         element.style.borderRadius =
           "9999px";
 
         element.style.border =
-          "2px solid var(--surface)";
+          "2px solid var(--surface, #ffffff)";
 
         element.style.background =
-          getMarkerBackground(
-            point.kind
-          );
+          appearance.background;
 
         element.style.color =
-          "var(--brand-contrast)";
-
-        element.style.fontSize =
-          "12px";
-
-        element.style.fontWeight =
-          "700";
+          appearance.color;
 
         element.style.cursor =
           "pointer";
 
         element.style.boxShadow =
-          "0 2px 8px rgba(0, 0, 0, 0.25)";
+          "0 2px 10px rgba(0, 0, 0, 0.28)";
 
-        // Popup content
         const popupContent =
           document.createElement(
             "div"
           );
 
         popupContent.style.minWidth =
-          "180px";
+          "210px";
 
         popupContent.style.color =
           "#17201b";
+
+        const status =
+          document.createElement(
+            "div"
+          );
+
+        status.textContent =
+          getPlaceStatusLabel(
+            point.status
+          );
+
+        status.style.display =
+          "inline-block";
+
+        status.style.padding =
+          "3px 7px";
+
+        status.style.borderRadius =
+          "9999px";
+
+        status.style.background =
+          "#eef3f0";
+
+        status.style.fontSize =
+          "11px";
+
+        status.style.fontWeight =
+          "600";
+
+        popupContent.appendChild(
+          status
+        );
 
         const title =
           document.createElement(
@@ -454,11 +833,47 @@ export default function TripMap({
         title.textContent =
           point.name;
 
+        title.style.display =
+          "block";
+
+        title.style.marginTop =
+          "8px";
+
+        title.style.fontSize =
+          "14px";
+
         popupContent.appendChild(
           title
         );
 
-        if (point.subtitle) {
+        const category =
+          document.createElement(
+            "div"
+          );
+
+        category.textContent =
+          getMapPointCategoryLabel(
+            point.category
+          );
+
+        category.style.marginTop =
+          "4px";
+
+        category.style.fontSize =
+          "12px";
+
+        category.style.color =
+          "#5f6d66";
+
+        popupContent.appendChild(
+          category
+        );
+
+        if (
+          point.subtitle &&
+          point.subtitle !==
+            category.textContent
+        ) {
           const subtitle =
             document.createElement(
               "div"
@@ -468,13 +883,38 @@ export default function TripMap({
             point.subtitle;
 
           subtitle.style.marginTop =
-            "4px";
+            "5px";
 
           subtitle.style.fontSize =
             "12px";
 
           popupContent.appendChild(
             subtitle
+          );
+        }
+
+        if (
+          point.address
+        ) {
+          const address =
+            document.createElement(
+              "div"
+            );
+
+          address.textContent =
+            point.address;
+
+          address.style.marginTop =
+            "5px";
+
+          address.style.fontSize =
+            "11px";
+
+          address.style.color =
+            "#6b746f";
+
+          popupContent.appendChild(
+            address
           );
         }
 
@@ -493,7 +933,7 @@ export default function TripMap({
           "inline-block";
 
         link.style.marginTop =
-          "8px";
+          "10px";
 
         link.style.fontSize =
           "12px";
@@ -518,7 +958,8 @@ export default function TripMap({
         const marker =
           new maplibre.Marker({
             element,
-            anchor: "bottom",
+            anchor:
+              "bottom",
           })
             .setLngLat([
               point.longitude,
@@ -535,6 +976,11 @@ export default function TripMap({
           marker
         );
 
+        markerByPointIdRef.current.set(
+          point.id,
+          marker
+        );
+
         bounds.extend([
           point.longitude,
           point.latitude,
@@ -542,7 +988,6 @@ export default function TripMap({
       }
     );
 
-    // One marker
     if (
       filteredPoints.length ===
       1
@@ -557,32 +1002,140 @@ export default function TripMap({
         ],
 
         zoom: 14,
-        duration: 500,
+
+        duration:
+          500,
       });
 
       return;
     }
 
-    // Multiple markers
     map.fitBounds(
       bounds,
       {
-        padding: 60,
-        maxZoom: 14,
-        duration: 500,
+        padding:
+          large
+            ? 80
+            : 55,
+
+        maxZoom:
+          14,
+
+        duration:
+          500,
       }
     );
   }, [
     filteredPoints,
     mapReady,
+    large,
   ]);
 
-  // Missing map API key
+  // Place cards can ask the
+  // map to focus a marker.
+  useEffect(() => {
+    function handleFocus(
+      rawEvent: Event
+    ) {
+      const event =
+        rawEvent as CustomEvent<{
+          pointId?:
+            string;
+        }>;
+
+      const pointId =
+        event.detail
+          ?.pointId;
+
+      if (
+        !pointId
+      ) {
+        return;
+      }
+
+      const point =
+        points.find(
+          (candidate) =>
+            candidate.id ===
+            pointId
+        );
+
+      const marker =
+        markerByPointIdRef.current.get(
+          pointId
+        );
+
+      const map =
+        mapRef.current;
+
+      if (
+        !point ||
+        !marker ||
+        !map
+      ) {
+        return;
+      }
+
+      map.resize();
+
+      map.easeTo({
+        center: [
+          point.longitude,
+          point.latitude,
+        ],
+
+        zoom: 15,
+
+        duration:
+          650,
+      });
+
+      const popup =
+        marker.getPopup();
+
+      if (
+        popup &&
+        !popup.isOpen()
+      ) {
+        marker.togglePopup();
+      }
+    }
+
+    window.addEventListener(
+      "tripsync:focus-map",
+      handleFocus
+    );
+
+    return () => {
+      window.removeEventListener(
+        "tripsync:focus-map",
+        handleFocus
+      );
+    };
+  }, [
+    points,
+  ]);
+
+  function resetFilters() {
+    setDayFilter(
+      "all"
+    );
+
+    setCategoryFilter(
+      "all"
+    );
+
+    setStatusFilter(
+      "all"
+    );
+  }
+
   if (!apiKey) {
     return (
       <div className="rounded-2xl border border-danger-border bg-danger-surface p-8 text-center">
         <p className="font-medium text-danger-text">
-          Map is not configured
+          Map is not
+          configured
         </p>
 
         <p className="mt-2 text-sm text-muted">
@@ -590,25 +1143,29 @@ export default function TripMap({
           <code>
             NEXT_PUBLIC_GEOAPIFY_MAP_KEY
           </code>{" "}
-          to .env.local and restart
-          the development server.
+          to .env.local and
+          restart the
+          development server.
         </p>
       </div>
     );
   }
 
-  // Nothing to map
-  if (points.length === 0) {
+  if (
+    points.length ===
+    0
+  ) {
     return (
       <div className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center">
         <p className="font-medium text-ink">
-          Nothing to show on the map
-          yet
+          Nothing to show
+          on the map yet
         </p>
 
         <p className="mt-2 text-sm text-muted">
-          Save a place or add an
-          itinerary item with a
+          Save a place or
+          add an itinerary
+          item with a
           location.
         </p>
       </div>
@@ -617,74 +1174,242 @@ export default function TripMap({
 
   return (
     <div>
-      {/* Map filters */}
-      <div className="mb-4 flex flex-wrap gap-2">
+      {/* Collapsible filters */}
+      <div className="mb-4 overflow-hidden rounded-xl border border-line bg-surface">
         <button
           type="button"
           onClick={() =>
-            setFilter("all")
+            setFiltersOpen(
+              (current) =>
+                !current
+            )
           }
-          className={
-            filter === "all"
-              ? "cursor-pointer rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-medium text-brand-contrast"
-              : "cursor-pointer rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium text-muted hover:bg-surface-hover"
+          aria-expanded={
+            filtersOpen
           }
+          className="flex w-full cursor-pointer items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-surface-hover"
         >
-          All
+          <div>
+            <p className="text-sm font-medium text-ink">
+              Map filters
+            </p>
+
+            <p className="mt-0.5 text-xs text-muted">
+              Day, category
+              and planning
+              status
+            </p>
+          </div>
+
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className={`h-5 w-5 text-muted transition-transform ${
+              filtersOpen
+                ? "rotate-180"
+                : ""
+            }`}
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
         </button>
 
-        <button
-          type="button"
-          onClick={() =>
-            setFilter("saved")
-          }
-          className={
-            filter === "saved"
-              ? "cursor-pointer rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-medium text-brand-contrast"
-              : "cursor-pointer rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium text-muted hover:bg-surface-hover"
-          }
-        >
-          Saved
-        </button>
+        {filtersOpen && (
+          <div className="border-t border-line p-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              {/* Day */}
+              <div>
+                <label
+                  htmlFor="map-day-filter"
+                  className="mb-1.5 block text-xs font-medium text-ink"
+                >
+                  Day
+                </label>
 
-        {tripDates.map(
-          (date, index) => (
+                <select
+                  id="map-day-filter"
+                  value={
+                    dayFilter
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setDayFilter(
+                      event.target
+                        .value
+                    )
+                  }
+                  className="w-full rounded-xl border border-line bg-surface-soft px-3 py-2 text-sm text-ink"
+                >
+                  <option value="all">
+                    All days
+                  </option>
+
+                  {tripDates.map(
+                    (
+                      date,
+                      index
+                    ) => (
+                      <option
+                        key={
+                          date
+                        }
+                        value={
+                          date
+                        }
+                      >
+                        Day{" "}
+                        {index +
+                          1}
+                        {" — "}
+                        {formatTripDay(
+                          date
+                        )}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label
+                  htmlFor="map-category-filter"
+                  className="mb-1.5 block text-xs font-medium text-ink"
+                >
+                  Category
+                </label>
+
+                <select
+                  id="map-category-filter"
+                  value={
+                    categoryFilter
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setCategoryFilter(
+                      event.target
+                        .value as
+                        | "all"
+                        | MapPointCategory
+                    )
+                  }
+                  className="w-full rounded-xl border border-line bg-surface-soft px-3 py-2 text-sm text-ink"
+                >
+                  <option value="all">
+                    All
+                    categories
+                  </option>
+
+                  {MAP_POINT_CATEGORY_OPTIONS.map(
+                    (
+                      option
+                    ) => (
+                      <option
+                        key={
+                          option.value
+                        }
+                        value={
+                          option.value
+                        }
+                      >
+                        {
+                          option.label
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label
+                  htmlFor="map-status-filter"
+                  className="mb-1.5 block text-xs font-medium text-ink"
+                >
+                  Status
+                </label>
+
+                <select
+                  id="map-status-filter"
+                  value={
+                    statusFilter
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setStatusFilter(
+                      event.target
+                        .value as
+                        | "all"
+                        | PlacePlanningStatus
+                    )
+                  }
+                  className="w-full rounded-xl border border-line bg-surface-soft px-3 py-2 text-sm text-ink"
+                >
+                  <option value="all">
+                    All
+                    statuses
+                  </option>
+
+                  {PLACE_STATUS_OPTIONS.map(
+                    (
+                      option
+                    ) => (
+                      <option
+                        key={
+                          option.value
+                        }
+                        value={
+                          option.value
+                        }
+                      >
+                        {
+                          option.label
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+            </div>
+
             <button
-              key={date}
               type="button"
-              onClick={() =>
-                setFilter(
-                  date
-                )
+              onClick={
+                resetFilters
               }
-              title={formatTripDay(
-                date
-              )}
-              className={
-                filter === date
-                  ? "cursor-pointer rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-medium text-brand-contrast"
-                  : "cursor-pointer rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium text-muted hover:bg-surface-hover"
-              }
+              className="mt-4 cursor-pointer text-sm font-medium text-muted hover:text-ink"
             >
-              Day {index + 1}
+              Clear filters
             </button>
-          )
+          </div>
         )}
       </div>
 
-      {/* Visible location count */}
       <p className="mb-3 text-xs text-subtle">
-        {filteredPoints.length}{" "}
-        {filteredPoints.length === 1
+        {
+          filteredPoints.length
+        }{" "}
+        {filteredPoints.length ===
+        1
           ? "location"
           : "locations"}{" "}
         shown
       </p>
 
-      {/* Map */}
       <div className="relative">
         <div
-          ref={containerRef}
+          ref={
+            containerRef
+          }
           className={
             large
               ? "h-[70vh] min-h-[500px] w-full overflow-hidden rounded-2xl border border-line"
@@ -692,48 +1417,62 @@ export default function TripMap({
           }
         />
 
-        {/* Loading */}
         {!mapReady &&
           !mapError && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-surface">
               <p className="text-sm text-muted">
-                Loading map...
+                Loading
+                map...
               </p>
             </div>
           )}
 
-        {/* Error */}
         {mapError && (
           <div className="absolute inset-0 flex items-center justify-center rounded-2xl border border-danger-border bg-danger-surface p-8 text-center">
             <div className="max-w-md">
               <p className="font-semibold text-danger-text">
-                Unable to load map
+                Unable to
+                load map
               </p>
 
               <p className="mt-2 break-words text-sm leading-6 text-muted">
-                {mapError}
+                {
+                  mapError
+                }
               </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Legend */}
-      <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
-        <span>
-          P = Saved place
+      {/* Icon legend */}
+      <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 text-xs text-muted">
+        <span className="flex items-center gap-1.5">
+          <MarkerLegendIcon
+            kind="saved"
+          />
+          Saved place
         </span>
 
-        <span>
-          A = Activity
+        <span className="flex items-center gap-1.5">
+          <MarkerLegendIcon
+            kind="activity"
+          />
+          Activity
         </span>
 
-        <span>
-          T = Transport
+        <span className="flex items-center gap-1.5">
+          <MarkerLegendIcon
+            kind="transport"
+          />
+          Transport
         </span>
 
-        <span>
-          H = Accommodation
+        <span className="flex items-center gap-1.5">
+          <MarkerLegendIcon
+            kind="accommodation"
+          />
+          Accommodation
         </span>
       </div>
     </div>

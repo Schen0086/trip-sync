@@ -1,22 +1,24 @@
 import Link from "next/link";
+
 import {
   redirect,
 } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+
 import BackButton from "@/components/back-button";
 import PlaceDiscoveryPanel from "@/components/place-discovery-panel";
+import SavedPlacesList from "@/components/saved-places-list";
 import TripMap from "@/components/trip-map";
+
 import {
-  addSavedPlaceToItinerary,
-  suggestSavedPlace,
-} from "./actions";
+  createClient,
+} from "@/lib/supabase/server";
+
 import {
   buildTripMapPoints,
-  getPlaceCategoryLabel,
-  getSavedPlaceAuthor,
   type MapItineraryItem,
   type SavedPlace,
 } from "@/lib/places";
+
 import {
   getTripDates,
   type ProfileSummary,
@@ -46,11 +48,16 @@ export default async function PlacesPage({
   const supabase =
     await createClient();
 
-  // Authentication
-  const { data, error } =
+  const {
+    data,
+    error,
+  } =
     await supabase.auth.getClaims();
 
-  if (error || !data?.claims) {
+  if (
+    error ||
+    !data?.claims
+  ) {
     redirect("/login");
   }
 
@@ -83,7 +90,9 @@ export default async function PlacesPage({
   }
 
   if (!trip) {
-    redirect("/dashboard");
+    redirect(
+      "/dashboard"
+    );
   }
 
   const isTripCreator =
@@ -97,10 +106,16 @@ export default async function PlacesPage({
   } = await supabase
     .from("saved_places")
     .select("*")
-    .eq("trip_id", trip.id)
-    .order("created_at", {
-      ascending: false,
-    });
+    .eq(
+      "trip_id",
+      trip.id
+    )
+    .order(
+      "created_at",
+      {
+        ascending: false,
+      }
+    );
 
   if (placesError) {
     console.error(
@@ -129,14 +144,19 @@ export default async function PlacesPage({
       ProfileSummary
     >();
 
-  if (authorIds.length > 0) {
+  if (
+    authorIds.length >
+    0
+  ) {
     const {
       data: profiles,
     } = await supabase
       .from("profiles")
-      .select(
-        "id, display_name, username"
-      )
+      .select(`
+        id,
+        display_name,
+        username
+      `)
       .in(
         "id",
         authorIds
@@ -160,7 +180,8 @@ export default async function PlacesPage({
     );
   }
 
-  const savedPlaces =
+  const savedPlaces:
+    SavedPlace[] =
     rawPlaces.map(
       (place) => ({
         ...place,
@@ -172,13 +193,14 @@ export default async function PlacesPage({
       })
     );
 
-  // Itinerary items linked to saved places
-  // plus confirmed items needed by the map.
+  // Linked itinerary + map data
   const {
     data: rawItineraryData,
     error: itineraryError,
   } = await supabase
-    .from("itinerary_items")
+    .from(
+      "itinerary_items"
+    )
     .select(`
       id,
       source_saved_place_id,
@@ -187,20 +209,26 @@ export default async function PlacesPage({
       title,
       scheduled_date,
       location_name,
+      address,
       latitude,
       longitude,
       departure_location,
+      departure_address,
       departure_latitude,
       departure_longitude,
       departure_date,
       arrival_location,
+      arrival_address,
       arrival_latitude,
       arrival_longitude,
       arrival_date,
       check_in_date,
       check_out_date
     `)
-    .eq("trip_id", trip.id);
+    .eq(
+      "trip_id",
+      trip.id
+    );
 
   if (itineraryError) {
     console.error(
@@ -213,27 +241,6 @@ export default async function PlacesPage({
     (rawItineraryData ??
       []) as MapItineraryItem[];
 
-  // Link saved places to itinerary/backlog item
-  const linkedItemByPlace =
-    new Map<
-      string,
-      MapItineraryItem
-    >();
-
-  itineraryItems.forEach(
-    (item) => {
-      if (
-        item.source_saved_place_id
-      ) {
-        linkedItemByPlace.set(
-          item.source_saved_place_id,
-          item
-        );
-      }
-    }
-  );
-
-  // Map data
   const mapPoints =
     buildTripMapPoints(
       savedPlaces,
@@ -268,17 +275,17 @@ export default async function PlacesPage({
   return (
     <main className="px-6 py-8">
       <div className="mx-auto max-w-6xl">
-        {/* Back */}
         <BackButton
           fallbackHref={`/trips/${trip.id}`}
         />
 
-        {/* Heading */}
         <header className="mt-8 border-b border-line pb-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-brand-700">
-                {trip.name}
+                {
+                  trip.name
+                }
               </p>
 
               <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink">
@@ -286,9 +293,12 @@ export default async function PlacesPage({
               </h1>
 
               <p className="mt-2 text-muted">
-                Discover and save
-                places around{" "}
-                {trip.destination}.
+                Discover, shortlist
+                and plan places
+                around{" "}
+                {
+                  trip.destination
+                }.
               </p>
             </div>
 
@@ -297,20 +307,20 @@ export default async function PlacesPage({
                 href={`/trips/${trip.id}/map`}
                 className="rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-hover"
               >
-                Open map
+                Full map
               </Link>
 
               <Link
                 href={`/trips/${trip.id}/places/new`}
                 className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast"
               >
-                Save a place
+                Save a
+                place
               </Link>
             </div>
           </div>
         </header>
 
-        {/* Error */}
         {query.error && (
           <div
             role="alert"
@@ -320,351 +330,176 @@ export default async function PlacesPage({
           </div>
         )}
 
-        {/* Success */}
         {query.success && (
           <div
             role="status"
             className="mt-8 rounded-xl border border-success-border bg-success-surface px-4 py-3 text-sm text-success-text"
           >
-            {query.success}
+            {
+              query.success
+            }
           </div>
         )}
 
-        {/* Loading errors */}
         {placesError && (
           <div className="mt-8 rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-text">
-            Unable to load saved
-            places:{" "}
-            {placesError.message}
+            Unable to load
+            saved places:{" "}
+            {
+              placesError.message
+            }
           </div>
         )}
 
-        {/* Discovery */}
-        <div className="mt-10">
-          <PlaceDiscoveryPanel
-            tripId={trip.id}
-            tripDestination={
-              trip.destination
-            }
-            savedGeoapifyIds={
-              savedGeoapifyIds
-            }
-          />
-        </div>
+        {itineraryError && (
+          <div className="mt-4 rounded-xl border border-line bg-surface-soft px-4 py-3 text-sm text-muted">
+            Saved places
+            loaded, but some
+            planning statuses
+            could not be loaded.
+          </div>
+        )}
 
-        {/* Map preview */}
-        <section className="mt-10">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        {/* Discovery is collapsible because
+            it takes substantial vertical space. */}
+        <details
+          open
+          className="group mt-10"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl border border-line bg-surface px-5 py-4 transition hover:bg-surface-hover [&::-webkit-details-marker]:hidden">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-ink">
-                Trip map
-              </h2>
+              <p className="font-semibold text-ink">
+                Place discovery
+              </p>
 
-              <p className="mt-1 text-muted">
-                Saved ideas and
-                confirmed itinerary
-                locations.
+              <p className="mt-1 text-sm text-muted">
+                Search nearby
+                restaurants,
+                attractions and
+                other places.
               </p>
             </div>
 
-            <Link
-              href={`/trips/${trip.id}/map`}
-              className="text-sm font-medium text-brand-700"
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="h-5 w-5 shrink-0 text-muted transition-transform group-open:rotate-180"
             >
-              Full map →
-            </Link>
-          </div>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </summary>
 
-          <div className="mt-5">
+          <div className="mt-4">
+            <PlaceDiscoveryPanel
+              tripId={
+                trip.id
+              }
+              tripDestination={
+                trip.destination
+              }
+              savedGeoapifyIds={
+                savedGeoapifyIds
+              }
+            />
+          </div>
+        </details>
+
+        {/* Collapsible map preview */}
+        <details
+          id="places-map-section"
+          open
+          className="group mt-10 scroll-mt-40 overflow-hidden rounded-2xl border border-line bg-surface"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 transition hover:bg-surface-hover [&::-webkit-details-marker]:hidden sm:p-6">
+            <div>
+              <h2 className="text-xl font-semibold text-ink">
+                Trip map
+              </h2>
+
+              <p className="mt-1 text-sm text-muted">
+                Saved ideas,
+                voting options and
+                confirmed plans.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/trips/${trip.id}/map`}
+                className="text-sm font-medium text-brand-700"
+              >
+                Full map →
+              </Link>
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className="h-5 w-5 text-muted transition-transform group-open:rotate-180"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
+          </summary>
+
+          <div className="border-t border-line p-4 sm:p-6">
             <TripMap
-              apiKey={mapKey}
-              points={mapPoints}
+              apiKey={
+                mapKey
+              }
+              points={
+                mapPoints
+              }
               tripDates={
                 tripDates
               }
             />
           </div>
-        </section>
+        </details>
 
-        {/* Saved places */}
-        <section className="mt-12 border-t border-line pt-10">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-ink">
-              Saved places
-            </h2>
-
-            <p className="mt-1 text-muted">
-              The group&apos;s shared
-              shortlist.
-            </p>
-          </div>
-
-          {savedPlaces.length ===
-          0 ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-line p-10 text-center">
-              <h3 className="font-semibold text-ink">
-                No saved places yet
-              </h3>
-
-              <p className="mt-2 text-sm text-muted">
-                Discover somewhere
-                above or save a place
-                manually.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-6 grid gap-5 md:grid-cols-2">
-              {savedPlaces.map(
-                (place) => {
-                  const author =
-                    getSavedPlaceAuthor(
-                      place
-                    );
-
-                  const linkedItem =
-                    linkedItemByPlace.get(
-                      place.id
-                    );
-
-                  const canEdit =
-                    isTripCreator ||
-                    place.saved_by ===
-                      userId;
-
-                  return (
-                    <article
-                      key={place.id}
-                      id={`place-${place.id}`}
-                      className="scroll-mt-28 rounded-2xl border border-line bg-surface p-6"
-                    >
-                      {/* Header */}
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <span className="rounded-full border border-line bg-surface-soft px-2.5 py-1 text-xs font-medium text-muted">
-                            {getPlaceCategoryLabel(
-                              place.category
-                            )}
-                          </span>
-
-                          <h3 className="mt-4 text-xl font-semibold text-ink">
-                            {place.name}
-                          </h3>
-
-                          <p className="mt-1 text-xs text-subtle">
-                            Saved by{" "}
-                            {author?.display_name ??
-                              "Traveller"}
-
-                            {author?.username
-                              ? ` (@${author.username})`
-                              : ""}
-                          </p>
-                        </div>
-
-                        {canEdit && (
-                          <Link
-                            href={`/trips/${trip.id}/places/edit/${place.id}`}
-                            className="text-sm font-medium text-brand-700"
-                          >
-                            Edit
-                          </Link>
-                        )}
-                      </div>
-
-                      {/* Details */}
-                      {place.address && (
-                        <p className="mt-4 text-sm leading-6 text-muted">
-                          {place.address}
-                        </p>
-                      )}
-
-                      {place.notes && (
-                        <div className="mt-4 rounded-xl border border-line bg-surface-soft p-4">
-                          <p className="text-sm whitespace-pre-wrap leading-6 text-muted">
-                            {place.notes}
-                          </p>
-                        </div>
-                      )}
-
-                      {place.website_url && (
-                        <a
-                          href={
-                            place.website_url
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-4 inline-block text-sm font-medium text-brand-700"
-                        >
-                          Open website →
-                        </a>
-                      )}
-
-                      {/* Already connected */}
-                      {linkedItem ? (
-                        <div className="mt-6 border-t border-line pt-4">
-                          {linkedItem.planning_status ===
-                          "planned" ? (
-                            <Link
-                              href={`/trips/${trip.id}/itinerary`}
-                              className="text-sm font-medium text-brand-700"
-                            >
-                              Already in itinerary →
-                            </Link>
-                          ) : (
-                            <Link
-                              href={`/trips/${trip.id}/voting#item-${linkedItem.id}`}
-                              className="text-sm font-medium text-brand-700"
-                            >
-                              In voting backlog →
-                            </Link>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="mt-6 border-t border-line pt-5">
-                          <div className="flex flex-col gap-3">
-                            {/* Suggest to group */}
-                            {trip.trip_type ===
-                              "group" && (
-                              <form
-                                action={
-                                  suggestSavedPlace
-                                }
-                              >
-                                <input
-                                  type="hidden"
-                                  name="tripId"
-                                  value={
-                                    trip.id
-                                  }
-                                />
-
-                                <input
-                                  type="hidden"
-                                  name="placeId"
-                                  value={
-                                    place.id
-                                  }
-                                />
-
-                                <button
-                                  type="submit"
-                                  className="cursor-pointer rounded-xl border border-line bg-surface-soft px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-hover"
-                                >
-                                  Suggest to group
-                                </button>
-                              </form>
-                            )}
-
-                            {/* Direct scheduling */}
-                            {isTripCreator && (
-                              <details className="rounded-xl border border-line bg-surface-soft">
-                                <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-ink">
-                                  Add directly to itinerary
-                                </summary>
-
-                                <form
-                                  action={
-                                    addSavedPlaceToItinerary
-                                  }
-                                  className="space-y-4 border-t border-line p-4"
-                                >
-                                  <input
-                                    type="hidden"
-                                    name="tripId"
-                                    value={
-                                      trip.id
-                                    }
-                                  />
-
-                                  <input
-                                    type="hidden"
-                                    name="placeId"
-                                    value={
-                                      place.id
-                                    }
-                                  />
-
-                                  <div>
-                                    <label
-                                      htmlFor={`date-${place.id}`}
-                                      className="mb-1.5 block text-xs font-medium text-ink"
-                                    >
-                                      Day
-                                    </label>
-
-                                    <input
-                                      id={`date-${place.id}`}
-                                      name="scheduledDate"
-                                      type="date"
-                                      required
-                                      min={
-                                        trip.start_date
-                                      }
-                                      max={
-                                        trip.end_date
-                                      }
-                                      className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink"
-                                    />
-                                  </div>
-
-                                  <div className="grid gap-3 sm:grid-cols-2">
-                                    <div>
-                                      <label
-                                        htmlFor={`start-${place.id}`}
-                                        className="mb-1.5 block text-xs font-medium text-ink"
-                                      >
-                                        Start time
-                                      </label>
-
-                                      <input
-                                        id={`start-${place.id}`}
-                                        name="startTime"
-                                        type="time"
-                                        className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink"
-                                      />
-                                    </div>
-
-                                    <div>
-                                      <label
-                                        htmlFor={`end-${place.id}`}
-                                        className="mb-1.5 block text-xs font-medium text-ink"
-                                      >
-                                        End time
-                                      </label>
-
-                                      <input
-                                        id={`end-${place.id}`}
-                                        name="endTime"
-                                        type="time"
-                                        className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  <button
-                                    type="submit"
-                                    className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast"
-                                  >
-                                    Add to itinerary
-                                  </button>
-                                </form>
-                              </details>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </article>
-                  );
-                }
-              )}
-            </div>
-          )}
-        </section>
+        <div className="mt-12 border-t border-line pt-10">
+          <SavedPlacesList
+            tripId={
+              trip.id
+            }
+            tripType={
+              trip.trip_type
+            }
+            startDate={
+              trip.start_date
+            }
+            endDate={
+              trip.end_date
+            }
+            currentUserId={
+              userId
+            }
+            isTripCreator={
+              isTripCreator
+            }
+            places={
+              savedPlaces
+            }
+            itineraryItems={
+              itineraryItems
+            }
+          />
+        </div>
 
         <p className="mt-10 text-center text-xs text-subtle">
-          Place discovery and map
-          data powered by Geoapify
-          and OpenStreetMap.
+          Place discovery and
+          map data powered by
+          Geoapify and
+          OpenStreetMap.
         </p>
       </div>
     </main>

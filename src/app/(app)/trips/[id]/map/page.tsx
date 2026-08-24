@@ -1,15 +1,22 @@
 import Link from "next/link";
+
 import {
   redirect,
 } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+
 import BackButton from "@/components/back-button";
 import TripMap from "@/components/trip-map";
+
+import {
+  createClient,
+} from "@/lib/supabase/server";
+
 import {
   buildTripMapPoints,
   type MapItineraryItem,
   type SavedPlace,
 } from "@/lib/places";
+
 import {
   getTripDates,
 } from "@/lib/itinerary";
@@ -29,40 +36,49 @@ export default async function TripMapPage({
   const supabase =
     await createClient();
 
-  // Authentication
-  const { data, error } =
+  const {
+    data,
+    error,
+  } =
     await supabase.auth.getClaims();
 
-  if (error || !data?.claims) {
+  if (
+    error ||
+    !data?.claims
+  ) {
     redirect("/login");
   }
 
-  // Trip
-  const { data: trip } =
-    await supabase
-      .from("trips")
-      .select(`
-        id,
-        name,
-        destination,
-        start_date,
-        end_date
-      `)
-      .eq("id", id)
-      .maybeSingle();
+  const {
+    data: trip,
+  } = await supabase
+    .from("trips")
+    .select(`
+      id,
+      name,
+      destination,
+      start_date,
+      end_date
+    `)
+    .eq("id", id)
+    .maybeSingle();
 
   if (!trip) {
-    redirect("/dashboard");
+    redirect(
+      "/dashboard"
+    );
   }
 
-  // Saved places
   const {
     data: placeData,
     error: placeError,
   } = await supabase
     .from("saved_places")
     .select("*")
-    .eq("trip_id", trip.id);
+    .eq(
+      "trip_id",
+      trip.id
+    );
 
   if (placeError) {
     console.error(
@@ -71,12 +87,14 @@ export default async function TripMapPage({
     );
   }
 
-  // Itinerary locations
   const {
     data: itineraryData,
-    error: itineraryError,
+    error:
+      itineraryError,
   } = await supabase
-    .from("itinerary_items")
+    .from(
+      "itinerary_items"
+    )
     .select(`
       id,
       source_saved_place_id,
@@ -85,20 +103,26 @@ export default async function TripMapPage({
       title,
       scheduled_date,
       location_name,
+      address,
       latitude,
       longitude,
       departure_location,
+      departure_address,
       departure_latitude,
       departure_longitude,
       departure_date,
       arrival_location,
+      arrival_address,
       arrival_latitude,
       arrival_longitude,
       arrival_date,
       check_in_date,
       check_out_date
     `)
-    .eq("trip_id", trip.id);
+    .eq(
+      "trip_id",
+      trip.id
+    );
 
   if (itineraryError) {
     console.error(
@@ -136,17 +160,17 @@ export default async function TripMapPage({
   return (
     <main className="px-6 py-8">
       <div className="mx-auto max-w-7xl">
-        {/* Back */}
         <BackButton
           fallbackHref={`/trips/${trip.id}`}
         />
 
-        {/* Heading */}
         <header className="mt-8 border-b border-line pb-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-brand-700">
-                {trip.name}
+                {
+                  trip.name
+                }
               </p>
 
               <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink">
@@ -154,7 +178,9 @@ export default async function TripMapPage({
               </h1>
 
               <p className="mt-2 text-muted">
-                {trip.destination}
+                {
+                  trip.destination
+                }
               </p>
             </div>
 
@@ -176,11 +202,14 @@ export default async function TripMapPage({
           </div>
         </header>
 
-        {/* Map */}
         <section className="mt-8">
           <TripMap
-            apiKey={mapKey}
-            points={points}
+            apiKey={
+              mapKey
+            }
+            points={
+              points
+            }
             tripDates={
               tripDates
             }
@@ -188,21 +217,57 @@ export default async function TripMapPage({
           />
         </section>
 
-        {/* Help */}
-        <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
-          <h2 className="font-semibold text-ink">
-            Map filters
-          </h2>
+        <details className="group mt-6 overflow-hidden rounded-2xl border border-line bg-surface">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 [&::-webkit-details-marker]:hidden">
+            <div>
+              <h2 className="font-semibold text-ink">
+                How map
+                filters work
+              </h2>
 
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Use All to see the
-            complete trip, Saved to
-            see undecided places, or a
-            specific day to see the
-            confirmed locations
-            relevant to that day.
-          </p>
-        </section>
+              <p className="mt-1 text-sm text-muted">
+                Filter by
+                day, category
+                or planning
+                status.
+              </p>
+            </div>
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="h-5 w-5 text-muted transition-transform group-open:rotate-180"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </summary>
+
+          <div className="border-t border-line p-5">
+            <p className="text-sm leading-6 text-muted">
+              Day filters show
+              confirmed locations
+              relevant to that
+              date. Status filters
+              let you separate
+              saved ideas, places
+              currently being voted
+              on, confirmed plans,
+              rejected ideas and
+              archived ideas.
+              Category filters can
+              isolate restaurants,
+              attractions,
+              accommodation,
+              transport and other
+              location types.
+            </p>
+          </div>
+        </details>
       </div>
     </main>
   );
