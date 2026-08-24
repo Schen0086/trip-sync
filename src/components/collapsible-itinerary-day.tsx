@@ -1,8 +1,7 @@
 "use client";
 
-import {
-  useState,
-  type ReactNode,
+import type {
+  ReactNode,
 } from "react";
 
 import {
@@ -14,6 +13,13 @@ type CollapsibleItineraryDayProps = {
   dayLabel: string;
   date: string;
   itemCount: number;
+
+  open: boolean;
+
+  onToggle: () => void;
+
+  hasConflict?: boolean;
+
   children: ReactNode;
 };
 
@@ -22,29 +28,44 @@ export default function CollapsibleItineraryDay({
   dayLabel,
   date,
   itemCount,
+  open,
+  onToggle,
+  hasConflict = false,
   children,
 }: CollapsibleItineraryDayProps) {
-  const [open, setOpen] =
-    useState(true);
-
   return (
-    <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+    <section
+      className={`overflow-hidden rounded-2xl border bg-surface ${
+        hasConflict
+          ? "border-danger-border"
+          : "border-line"
+      }`}
+    >
       {/* Day header */}
       <button
         type="button"
-        onClick={() =>
-          setOpen(
-            (current) =>
-              !current
-          )
+        onClick={
+          onToggle
         }
-        aria-expanded={open}
+        aria-expanded={
+          open
+        }
         className="flex w-full cursor-pointer items-center justify-between gap-4 px-5 py-5 text-left transition hover:bg-surface-hover sm:px-6"
       >
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-            Day {dayNumber}
-          </p>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+              Day{" "}
+              {dayNumber}
+            </p>
+
+            {hasConflict && (
+              <span className="rounded-full border border-danger-border bg-danger-surface px-2 py-0.5 text-[11px] font-medium text-danger-text">
+                Schedule
+                conflict
+              </span>
+            )}
+          </div>
 
           <h3 className="mt-1 font-semibold text-ink">
             {dayLabel}
