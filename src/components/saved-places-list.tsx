@@ -556,7 +556,7 @@ export default function SavedPlacesList({
           </p>
         </div>
       ) : (
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div className="mt-6 grid items-start gap-4 md:grid-cols-2">
           {filteredPlaces.map(
             (place) => {
               const author =
@@ -585,7 +585,7 @@ export default function SavedPlacesList({
                     place.id
                   }
                   id={`place-${place.id}`}
-                  className="group scroll-mt-40 overflow-hidden rounded-2xl border border-line bg-surface"
+                  className="group self-start scroll-mt-40 overflow-hidden rounded-2xl border border-line bg-surface"
                 >
                   <summary className="flex cursor-pointer list-none items-start justify-between gap-4 p-5 transition hover:bg-surface-hover [&::-webkit-details-marker]:hidden">
                     <div className="min-w-0">
