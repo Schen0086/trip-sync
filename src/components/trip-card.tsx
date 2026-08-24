@@ -1,21 +1,69 @@
 import Link from "next/link";
+
 import {
   formatTripDate,
   getTripLifecycle,
   getTripLifecycleLabel,
 } from "@/lib/trip-utils";
 
+
 type TripCardProps = {
   id: string;
   name: string;
   destination: string;
+
   startDate: string;
   endDate: string;
+
   tripType: string;
   status: string;
-  groupName?: string | null;
+
+  groupName?:
+    | string
+    | null;
+
   participantCount: number;
+
+  attentionCount?: number;
+
+  assignedTaskCount?: number;
+
+  plannedItemCount?: number;
 };
+
+
+function getDaysUntil(
+  date: string
+) {
+  const todayText =
+    new Date()
+      .toISOString()
+      .slice(0, 10);
+
+  const today =
+    new Date(
+      `${todayText}T00:00:00Z`
+    );
+
+  const target =
+    new Date(
+      `${date}T00:00:00Z`
+    );
+
+  return Math.round(
+    (
+      target.getTime() -
+      today.getTime()
+    ) /
+      (
+        24 *
+        60 *
+        60 *
+        1000
+      )
+  );
+}
+
 
 export default function TripCard({
   id,
@@ -27,23 +75,41 @@ export default function TripCard({
   status,
   groupName,
   participantCount,
+  attentionCount = 0,
+  assignedTaskCount = 0,
+  plannedItemCount = 0,
 }: TripCardProps) {
-  const lifecycle = getTripLifecycle(
-    status,
-    startDate,
-    endDate
-  );
+  const lifecycle =
+    getTripLifecycle(
+      status,
+      startDate,
+      endDate
+    );
 
   const lifecycleLabel =
-    getTripLifecycleLabel(lifecycle);
+    getTripLifecycleLabel(
+      lifecycle
+    );
 
-  // Set status style
   const lifecycleClass =
-    lifecycle === "cancelled"
+    lifecycle ===
+    "cancelled"
       ? "border border-danger-border bg-danger-surface text-danger-text"
-      : lifecycle === "ongoing"
-        ? "bg-brand-50 text-brand-700"
-        : "border border-line bg-surface-soft text-muted";
+      : lifecycle ===
+        "ongoing"
+      ? "bg-brand-50 text-brand-700"
+      : "border border-line bg-surface-soft text-muted";
+
+  const daysUntil =
+    getDaysUntil(
+      startDate
+    );
+
+  const showIntelligence =
+    lifecycle ===
+      "upcoming" ||
+    lifecycle ===
+      "ongoing";
 
   return (
     <Link
@@ -55,12 +121,27 @@ export default function TripCard({
         <span
           className={`rounded-full px-2.5 py-1 text-xs font-medium ${lifecycleClass}`}
         >
-          {lifecycleLabel}
+          {
+            lifecycleLabel
+          }
         </span>
 
         <span className="rounded-full border border-line bg-surface-soft px-2.5 py-1 text-xs font-medium capitalize text-muted">
-          {tripType}
+          {
+            tripType
+          }
         </span>
+
+        {showIntelligence &&
+          attentionCount >
+            0 && (
+            <span className="rounded-full border border-brand-500 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
+              {
+                attentionCount
+              }{" "}
+              need you
+            </span>
+          )}
       </div>
 
       {/* Trip details */}
@@ -78,24 +159,82 @@ export default function TripCard({
         </p>
       )}
 
+      {/* Timing */}
+      {lifecycle ===
+        "upcoming" &&
+        daysUntil >=
+          0 && (
+          <p className="mt-4 text-sm font-medium text-brand-700">
+            {daysUntil ===
+            0
+              ? "Starts today"
+              : daysUntil ===
+                1
+              ? "1 day away"
+              : `${daysUntil} days away`}
+          </p>
+        )}
+
+      {lifecycle ===
+        "ongoing" && (
+        <p className="mt-4 text-sm font-medium text-brand-700">
+          Happening now
+        </p>
+      )}
+
       {/* Trip information */}
-      <div className="mt-5 space-y-1.5 text-sm text-muted">
+      <div className="mt-4 space-y-1.5 text-sm text-muted">
         <p>
-          {formatTripDate(startDate, {
-            includeYear: false,
-          })}{" "}
-          – {formatTripDate(endDate)}
+          {formatTripDate(
+            startDate,
+            {
+              includeYear:
+                false,
+            }
+          )}{" "}
+          –{" "}
+          {formatTripDate(
+            endDate
+          )}
         </p>
 
         <p>
-          {participantCount}{" "}
-          {participantCount === 1
+          {
+            participantCount
+          }{" "}
+          {participantCount ===
+          1
             ? "traveller"
             : "travellers"}
         </p>
       </div>
 
-      {/* Trip action */}
+      {/* Planning intelligence */}
+      {showIntelligence && (
+        <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+          <span className="rounded-full bg-surface-soft px-2.5 py-1 text-xs text-muted">
+            {
+              plannedItemCount
+            }{" "}
+            planned
+          </span>
+
+          {assignedTaskCount >
+            0 && (
+            <span className="rounded-full border border-brand-500 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">
+              {
+                assignedTaskCount
+              }{" "}
+              {assignedTaskCount ===
+              1
+                ? "task"
+                : "tasks"}{" "}
+              for you
+            </span>
+          )}
+        </div>
+      )}
+
       <p className="mt-6 text-sm font-medium text-brand-700">
         View trip →
       </p>

@@ -11,17 +11,20 @@ import {
   usePathname,
 } from "next/navigation";
 
+
 type TripNavigationProps = {
   tripId: string;
   tripName: string;
   tripType: string;
 };
 
+
 type TripNavigationItem = {
   key: string;
   label: string;
   href: string;
 };
+
 
 export default function TripNavigation({
   tripId,
@@ -68,7 +71,8 @@ export default function TripNavigation({
         `${basePath}/map`,
     },
 
-    ...(tripType === "group"
+    ...(tripType ===
+    "group"
       ? [
           {
             key: "voting",
@@ -78,6 +82,13 @@ export default function TripNavigation({
           },
         ]
       : []),
+
+    {
+      key: "tasks",
+      label: "Tasks",
+      href:
+        `${basePath}/tasks`,
+    },
 
     {
       key: "expenses",
@@ -93,6 +104,7 @@ export default function TripNavigation({
         `${basePath}/packing`,
     },
   ];
+
 
   function getActiveKey() {
     if (
@@ -129,6 +141,14 @@ export default function TripNavigation({
 
     if (
       pathname.startsWith(
+        `${basePath}/tasks`
+      )
+    ) {
+      return "tasks";
+    }
+
+    if (
+      pathname.startsWith(
         `${basePath}/expenses`
       )
     ) {
@@ -146,24 +166,30 @@ export default function TripNavigation({
     return "overview";
   }
 
+
   const activeKey =
     getActiveKey();
 
   const activeItem =
     items.find(
       (item) =>
-        item.key === activeKey
+        item.key ===
+        activeKey
     ) ?? items[0];
+
 
   // Close mobile menu after navigation
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+    setMobileOpen(
+      false
+    );
+  }, [
+    pathname,
+  ]);
+
 
   return (
-    <nav
-      aria-label="Trip navigation"
-    >
+    <nav aria-label="Trip navigation">
       {/* Desktop navigation */}
       <div className="hidden items-center gap-3 md:flex">
         <div className="min-w-0 shrink pr-3">
@@ -200,11 +226,13 @@ export default function TripNavigation({
                   }
                   className={
                     active
-                      ? "whitespace-nowrap rounded-xl bg-brand-50 px-3.5 py-2 text-sm font-medium text-brand-700"
-                      : "whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium text-muted transition hover:bg-surface-hover hover:text-ink"
+                      ? "whitespace-nowrap rounded-xl bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700"
+                      : "whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-surface-hover hover:text-ink"
                   }
                 >
-                  {item.label}
+                  {
+                    item.label
+                  }
                 </Link>
               );
             }
@@ -269,7 +297,7 @@ export default function TripNavigation({
               (item) => {
                 const active =
                   item.key ===
-                    activeKey;
+                  activeKey;
 
                 return (
                   <Link
