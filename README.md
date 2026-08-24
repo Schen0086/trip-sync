@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TripSync
 
-## Getting Started
+TripSync is a travel planning web application I designed for individuals and friend groups to organise trips in one place.
 
-First, run the development server:
+It combines itinerary planning, group voting, shared expenses, packing, responsibilities, maps, weather, and real-time collaboration into a single responsive application.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Personal and group trip planning
+- Group creation, membership, roles, and invite codes
+- Day-by-day itineraries with activities, transport, and accommodation
+- Drag-and-drop itinerary ordering and schedule conflict detection
+- Group suggestions and voting
+- Suggestion acceptance, rejection, and archiving
+- Saved places and location discovery
+- Interactive trip maps with filtering
+- Live weather forecasts for upcoming trips
+- Shared expense tracking and settlements
+- Personal, required, and shared packing lists
+- Tasks and responsibilities with assignments, priorities, and due dates
+- Personalised dashboard highlighting items that need attention
+- Real-time collaborative updates
+- Responsive desktop and mobile layouts
+- Light and dark themes
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Frontend
 
-## Learn More
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
 
-To learn more about Next.js, take a look at the following resources:
+### Backend
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Supabase
+- PostgreSQL
+- Supabase Authentication
+- Row Level Security
+- Supabase Realtime
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Maps & External Services
 
-## Deploy on Vercel
+- MapLibre GL
+- Geoapify
+- Open-Meteo
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Technical Highlights
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Server and Client Components using the Next.js App Router
+- Secure database access using PostgreSQL Row Level Security
+- Real-time updates across shared trip data
+- Responsive, mobile-first interface
+- Persistent user theme preferences
+- Server-side authentication and route protection
+- Collaborative permission models for trips, groups, expenses, packing, voting, and tasks
+- Database migrations, triggers, helper functions, and validation implemented through Supabase
