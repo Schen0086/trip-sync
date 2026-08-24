@@ -309,7 +309,6 @@ function WeatherIcon({
   );
 }
 
-// Full weather section for Trip Details
 export function TripWeatherPanel({
   tripId,
   destination,
@@ -327,6 +326,10 @@ export function TripWeatherPanel({
       startDate,
       endDate,
     });
+
+  // Weather section starts expanded
+  const [open, setOpen] =
+    useState(true);
 
   // Loading
   if (loading) {
@@ -363,147 +366,176 @@ export function TripWeatherPanel({
     return null;
   }
 
-  // Future / past / unavailable
-  if (
-    weather.status !==
-    "available"
-  ) {
-    return (
-      <section className="mt-6 rounded-2xl border border-line bg-surface p-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-ink">
-              Weather forecast
-            </h2>
-
-            <p className="mt-1 text-sm text-muted">
-              {weather.locationName}
-            </p>
-          </div>
-
-          <WeatherAttribution />
-        </div>
-
-        <div className="mt-5 rounded-xl border border-line bg-surface-soft p-5">
-          <p className="text-sm text-muted">
-            {weather.message ??
-              "Weather is not currently available."}
-          </p>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <section className="mt-6 rounded-2xl border border-line bg-surface p-6">
-      {/* Heading */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className="mt-6 overflow-hidden rounded-2xl border border-line bg-surface">
+      {/* Collapsible header */}
+      <button
+        type="button"
+        onClick={() =>
+          setOpen(
+            (current) =>
+              !current
+          )
+        }
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center justify-between gap-4 px-6 py-5 text-left transition hover:bg-surface-hover"
+      >
         <div>
           <h2 className="text-lg font-semibold text-ink">
             Weather forecast
           </h2>
 
           <p className="mt-1 text-sm text-muted">
-            Forecast for{" "}
-            {weather.locationName}
+            {weather.status ===
+            "available"
+              ? `Forecast for ${weather.locationName}`
+              : weather.locationName}
           </p>
         </div>
 
-        <WeatherAttribution />
-      </div>
+        {/* Collapse indicator */}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className={`h-5 w-5 shrink-0 text-muted transition-transform ${
+            open
+              ? "rotate-180"
+              : ""
+          }`}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
 
-      {/* Forecast cards */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {weather.days.map(
-          (day) => (
-            <article
-              key={day.date}
-              className="rounded-xl border border-line bg-surface-soft p-4"
-            >
-              <p className="text-sm font-medium text-ink">
-                {formatWeatherDate(
-                  day.date
+      {/* Collapsible content */}
+      {open && (
+        <div className="border-t border-line px-6 py-5">
+          {/* Future / past / unavailable */}
+          {weather.status !==
+          "available" ? (
+            <>
+              <div className="rounded-xl border border-line bg-surface-soft p-5">
+                <p className="text-sm text-muted">
+                  {weather.message ??
+                    "Weather is not currently available."}
+                </p>
+              </div>
+
+              <div className="mt-4">
+                <WeatherAttribution />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Forecast cards */}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {weather.days.map(
+                  (day) => (
+                    <article
+                      key={day.date}
+                      className="rounded-xl border border-line bg-surface-soft p-4"
+                    >
+                      <p className="text-sm font-medium text-ink">
+                        {formatWeatherDate(
+                          day.date
+                        )}
+                      </p>
+
+                      <div className="mt-4 flex items-center gap-3">
+                        <div className="text-brand-700">
+                          <WeatherIcon
+                            code={
+                              day.weatherCode
+                            }
+                            className="h-8 w-8"
+                          />
+                        </div>
+
+                        <div>
+                          <p className="font-semibold text-ink">
+                            {day.temperatureMax !==
+                            null
+                              ? `${Math.round(
+                                  day.temperatureMax
+                                )}°`
+                              : "—"}
+
+                            <span className="ml-1 font-normal text-muted">
+                              /{" "}
+                              {day.temperatureMin !==
+                              null
+                                ? `${Math.round(
+                                    day.temperatureMin
+                                  )}°`
+                                : "—"}
+                            </span>
+                          </p>
+
+                          <p className="mt-0.5 text-xs text-muted">
+                            {getWeatherDescription(
+                              day.weatherCode
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-3">
+                        {/* Rain */}
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wide text-subtle">
+                            Rain
+                          </p>
+
+                          <p className="mt-1 text-sm font-medium text-ink">
+                            {day.precipitationProbability !==
+                            null
+                              ? `${Math.round(
+                                  day.precipitationProbability
+                                )}%`
+                              : "—"}
+                          </p>
+                        </div>
+
+                        {/* Wind */}
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wide text-subtle">
+                            Wind
+                          </p>
+
+                          <p className="mt-1 text-sm font-medium text-ink">
+                            {day.windSpeedMax !==
+                            null
+                              ? `${Math.round(
+                                  day.windSpeedMax
+                                )} km/h`
+                              : "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </article>
+                  )
                 )}
-              </p>
-
-              <div className="mt-4 flex items-center gap-3">
-                <div className="text-brand-700">
-                  <WeatherIcon
-                    code={
-                      day.weatherCode
-                    }
-                    className="h-8 w-8"
-                  />
-                </div>
-
-                <div>
-                  <p className="font-semibold text-ink">
-                    {day.temperatureMax !==
-                    null
-                      ? `${Math.round(
-                          day.temperatureMax
-                        )}°`
-                      : "—"}
-
-                    <span className="ml-1 font-normal text-muted">
-                      /{" "}
-                      {day.temperatureMin !==
-                      null
-                        ? `${Math.round(
-                            day.temperatureMin
-                          )}°`
-                        : "—"}
-                    </span>
-                  </p>
-
-                  <p className="mt-0.5 text-xs text-muted">
-                    {getWeatherDescription(
-                      day.weatherCode
-                    )}
-                  </p>
-                </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-subtle">
-                    Rain
-                  </p>
+              {/* Partial forecast */}
+              {weather.isPartial && (
+                <p className="mt-4 text-xs text-subtle">
+                  {weather.message}
+                </p>
+              )}
 
-                  <p className="mt-1 text-sm font-medium text-ink">
-                    {day.precipitationProbability !==
-                    null
-                      ? `${Math.round(
-                          day.precipitationProbability
-                        )}%`
-                      : "—"}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-subtle">
-                    Wind
-                  </p>
-
-                  <p className="mt-1 text-sm font-medium text-ink">
-                    {day.windSpeedMax !==
-                    null
-                      ? `${Math.round(
-                          day.windSpeedMax
-                        )} km/h`
-                      : "—"}
-                  </p>
-                </div>
+              {/* Attribution */}
+              <div className="mt-4">
+                <WeatherAttribution />
               </div>
-            </article>
-          )
-        )}
-      </div>
-
-      {weather.isPartial && (
-        <p className="mt-4 text-xs text-subtle">
-          {weather.message}
-        </p>
+            </>
+          )}
+        </div>
       )}
     </section>
   );
