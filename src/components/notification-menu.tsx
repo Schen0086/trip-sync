@@ -12,6 +12,7 @@ import {
   usePathname,
 } from "next/navigation";
 
+import Avatar from "@/components/avatar";
 import ConfirmActionButton from "@/components/confirm-action-button";
 
 import {
@@ -35,6 +36,39 @@ type NotificationMenuProps = {
 };
 
 
+function getNotificationActor(
+  notification:
+    NotificationRecord
+) {
+  if (
+    !notification.actor_user_id
+  ) {
+    return {
+      displayName:
+        "TripSync",
+
+      avatarUrl:
+        null,
+    };
+  }
+
+
+  return {
+    displayName:
+      notification
+        .actor_profile
+        ?.display_name ??
+      "Traveller",
+
+    avatarUrl:
+      notification
+        .actor_profile
+        ?.avatar_url ??
+      null,
+  };
+}
+
+
 export default function NotificationMenu({
   notifications,
   unreadCount,
@@ -44,15 +78,18 @@ export default function NotificationMenu({
     setOpen,
   ] = useState(false);
 
+
   const menuRef =
     useRef<HTMLDivElement>(
       null
     );
 
+
   const pathname =
     usePathname();
 
 
+  // Close the dropdown when navigation occurs.
   useEffect(() => {
     setOpen(false);
   }, [
@@ -60,6 +97,7 @@ export default function NotificationMenu({
   ]);
 
 
+  // Close when clicking outside or pressing Escape.
   useEffect(() => {
     function handleOutsideClick(
       event: MouseEvent
@@ -122,7 +160,9 @@ export default function NotificationMenu({
 
   return (
     <div
-      ref={menuRef}
+      ref={
+        menuRef
+      }
       className="relative shrink-0"
     >
       {/* Notification bell */}
@@ -158,6 +198,7 @@ export default function NotificationMenu({
           <path d="M10 21h4" />
         </svg>
 
+
         {unreadCount >
           0 && (
           <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold leading-none text-brand-contrast">
@@ -172,6 +213,7 @@ export default function NotificationMenu({
       {/* Dropdown */}
       {open && (
         <div className="absolute right-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+          {/* Header */}
           <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
             <div>
               <h2 className="font-semibold text-ink">
@@ -185,6 +227,7 @@ export default function NotificationMenu({
                   : "You're all caught up"}
               </p>
             </div>
+
 
             {unreadCount >
               0 && (
@@ -204,6 +247,7 @@ export default function NotificationMenu({
           </div>
 
 
+          {/* Notifications */}
           {notifications.length ===
           0 ? (
             <div className="px-5 py-10 text-center">
@@ -224,7 +268,15 @@ export default function NotificationMenu({
                   notification
                 ) => {
                   const unread =
-                    !notification.read_at;
+                    !notification
+                      .read_at;
+
+
+                  const actor =
+                    getNotificationActor(
+                      notification
+                    );
+
 
                   return (
                     <div
@@ -237,6 +289,7 @@ export default function NotificationMenu({
                           : "flex items-start gap-2 border-b border-line p-3 last:border-b-0"
                       }
                     >
+                      {/* Open notification */}
                       <form
                         action={
                           openNotification
@@ -251,19 +304,35 @@ export default function NotificationMenu({
                           }
                         />
 
+
                         <button
                           type="submit"
                           className="w-full cursor-pointer rounded-lg p-1 text-left transition hover:bg-surface-hover"
                         >
-                          <div className="flex items-start gap-2">
-                            {unread && (
-                              <span
-                                className="mt-2 h-2 w-2 shrink-0 rounded-full bg-brand-600"
-                                aria-label="Unread"
+                          <div className="flex items-start gap-3">
+                            {/* Actor avatar */}
+                            <div className="relative shrink-0">
+                              <Avatar
+                                src={
+                                  actor.avatarUrl
+                                }
+                                displayName={
+                                  actor.displayName
+                                }
+                                size="md"
                               />
-                            )}
 
-                            <div className="min-w-0">
+                              {unread && (
+                                <span
+                                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-brand-600"
+                                  aria-label="Unread"
+                                />
+                              )}
+                            </div>
+
+
+                            {/* Notification content */}
+                            <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-ink">
                                 {
                                   notification.title
@@ -336,6 +405,7 @@ export default function NotificationMenu({
           )}
 
 
+          {/* Footer */}
           <div className="flex items-center justify-between gap-3 border-t border-line bg-surface-soft px-4 py-3">
             <Link
               href="/notifications"
@@ -343,6 +413,7 @@ export default function NotificationMenu({
             >
               View all
             </Link>
+
 
             <form
               action={

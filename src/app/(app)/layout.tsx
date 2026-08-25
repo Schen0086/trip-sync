@@ -5,8 +5,9 @@ import {
 import AppShell from "@/components/app-shell";
 import RealtimeRefresh from "@/components/realtime-refresh";
 
-import type {
-  NotificationRecord,
+import {
+  normalizeActivityActorProfile,
+  type NotificationRecord,
 } from "@/lib/activity";
 
 import {
@@ -30,12 +31,14 @@ export default async function AuthenticatedLayout({
   } =
     await supabase.auth.getClaims();
 
+
   if (
     error ||
     !data?.claims
   ) {
     redirect("/login");
   }
+
 
   const userId =
     data.claims.sub;
@@ -44,6 +47,7 @@ export default async function AuthenticatedLayout({
   // Current profile
   const {
     data: profile,
+    error: profileError,
   } = await supabase
     .from("profiles")
     .select(`
@@ -57,16 +61,27 @@ export default async function AuthenticatedLayout({
     .single();
 
 
+  if (profileError) {
+    console.error(
+      "Failed to load current profile:",
+      profileError
+    );
+  }
+
+
   const displayName =
     profile?.display_name ??
     "Traveller";
-  
+
+
   const avatarUrl =
     profile?.avatar_url ??
     null;
 
 
-  // Recent notification preview
+  // Recent notification preview.
+  // Resolve the actor's current profile so old
+  // notifications also use their latest avatar.
   const {
     data:
       notificationData,
@@ -79,6 +94,10 @@ export default async function AuthenticatedLayout({
       user_id,
       trip_id,
       actor_user_id,
+      actor_profile:profiles!notifications_actor_user_id_fkey (
+        display_name,
+        avatar_url
+      ),
       type,
       title,
       message,
@@ -144,9 +163,21 @@ export default async function AuthenticatedLayout({
   }
 
 
-  const notifications =
-    (notificationData ??
-      []) as NotificationRecord[];
+  const notifications:
+    NotificationRecord[] =
+      (
+        notificationData ??
+        []
+      ).map(
+        (notification) => ({
+          ...notification,
+
+          actor_profile:
+            normalizeActivityActorProfile(
+              notification.actor_profile
+            ),
+        })
+      );
 
 
   return (

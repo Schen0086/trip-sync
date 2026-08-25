@@ -6,6 +6,18 @@ export type ActivityCategory =
   | "expenses"
   | "packing";
 
+
+export type ActivityActorProfile = {
+  display_name:
+    | string
+    | null;
+
+  avatar_url:
+    | string
+    | null;
+};
+
+
 export type TripActivityEvent = {
   id: string;
   trip_id: string;
@@ -14,11 +26,14 @@ export type TripActivityEvent = {
     | string
     | null;
 
+  actor_profile?:
+    | ActivityActorProfile
+    | null;
+
   category:
     ActivityCategory;
 
   event_type: string;
-
   entity_type: string;
 
   entity_id:
@@ -39,6 +54,7 @@ export type TripActivityEvent = {
   created_at: string;
 };
 
+
 export type NotificationRecord = {
   id: string;
 
@@ -50,6 +66,10 @@ export type NotificationRecord = {
 
   actor_user_id:
     | string
+    | null;
+
+  actor_profile?:
+    | ActivityActorProfile
     | null;
 
   type: string;
@@ -67,6 +87,37 @@ export type NotificationRecord = {
 
   created_at: string;
 };
+
+
+/**
+ * Supabase can infer an embedded relationship as either
+ * a single object or an array depending on relationship
+ * metadata. Normalize both shapes for the UI.
+ */
+export function normalizeActivityActorProfile(
+  profile:
+    | ActivityActorProfile
+    | ActivityActorProfile[]
+    | null
+    | undefined
+): ActivityActorProfile | null {
+  if (
+    Array.isArray(
+      profile
+    )
+  ) {
+    return (
+      profile[0] ??
+      null
+    );
+  }
+
+  return (
+    profile ??
+    null
+  );
+}
+
 
 export function getActivityCategoryLabel(
   category: ActivityCategory
@@ -92,6 +143,7 @@ export function getActivityCategoryLabel(
   }
 }
 
+
 export function formatActivityTimestamp(
   value: string
 ) {
@@ -109,6 +161,7 @@ export function formatActivityTimestamp(
     }
   );
 }
+
 
 export function formatActivityDay(
   value: string

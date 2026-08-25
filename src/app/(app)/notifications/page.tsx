@@ -2,6 +2,7 @@ import {
   redirect,
 } from "next/navigation";
 
+import Avatar from "@/components/avatar";
 import BackButton from "@/components/back-button";
 import ConfirmActionButton from "@/components/confirm-action-button";
 
@@ -15,6 +16,7 @@ import {
 
 import {
   formatActivityTimestamp,
+  normalizeActivityActorProfile,
   type NotificationRecord,
 } from "@/lib/activity";
 
@@ -29,11 +31,50 @@ type NotificationCardProps = {
 };
 
 
+function getNotificationActor(
+  notification:
+    NotificationRecord
+) {
+  if (
+    !notification.actor_user_id
+  ) {
+    return {
+      displayName:
+        "TripSync",
+
+      avatarUrl:
+        null,
+    };
+  }
+
+
+  return {
+    displayName:
+      notification
+        .actor_profile
+        ?.display_name ??
+      "Traveller",
+
+    avatarUrl:
+      notification
+        .actor_profile
+        ?.avatar_url ??
+      null,
+  };
+}
+
+
 function NotificationCard({
   notification,
 }: NotificationCardProps) {
   const unread =
     !notification.read_at;
+
+
+  const actor =
+    getNotificationActor(
+      notification
+    );
 
 
   return (
@@ -44,42 +85,69 @@ function NotificationCard({
           : "rounded-2xl border border-line bg-surface p-5"
       }
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            {unread && (
-              <span className="rounded-full bg-brand-600 px-2.5 py-1 text-xs font-medium text-brand-contrast">
-                Unread
-              </span>
-            )}
-
-            <time
-              dateTime={
-                notification.created_at
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        {/* Notification content */}
+        <div className="flex min-w-0 items-start gap-4">
+          {/* Actor avatar */}
+          <div className="relative shrink-0">
+            <Avatar
+              src={
+                actor.avatarUrl
               }
-              className="text-xs text-subtle"
-            >
-              {formatActivityTimestamp(
-                notification.created_at
-              )}
-            </time>
+              displayName={
+                actor.displayName
+              }
+              size="lg"
+            />
+
+            {unread && (
+              <span
+                className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-surface bg-brand-600"
+                aria-label="Unread"
+              />
+            )}
           </div>
 
-          <h3 className="mt-3 font-semibold text-ink">
-            {
-              notification.title
-            }
-          </h3>
 
-          <p className="mt-1 text-sm leading-6 text-muted">
-            {
-              notification.message
-            }
-          </p>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              {unread && (
+                <span className="rounded-full bg-brand-600 px-2.5 py-1 text-xs font-medium text-brand-contrast">
+                  Unread
+                </span>
+              )}
+
+              <time
+                dateTime={
+                  notification.created_at
+                }
+                className="text-xs text-subtle"
+              >
+                {formatActivityTimestamp(
+                  notification.created_at
+                )}
+              </time>
+            </div>
+
+
+            <h3 className="mt-3 font-semibold text-ink">
+              {
+                notification.title
+              }
+            </h3>
+
+
+            <p className="mt-1 text-sm leading-6 text-muted">
+              {
+                notification.message
+              }
+            </p>
+          </div>
         </div>
 
 
-        <div className="flex shrink-0 flex-wrap gap-2">
+        {/* Actions */}
+        <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
           <form
             action={
               openNotification
@@ -126,8 +194,8 @@ function NotificationCard({
           )}
 
 
-          {/* Notifications can be deleted
-              regardless of read status. */}
+          {/* Read and unread notifications can
+              both be deleted individually. */}
           <form
             action={
               deleteNotification
@@ -166,6 +234,7 @@ export default async function NotificationsPage() {
   } =
     await supabase.auth.getClaims();
 
+
   if (
     error ||
     !data?.claims
@@ -173,10 +242,13 @@ export default async function NotificationsPage() {
     redirect("/login");
   }
 
+
   const userId =
     data.claims.sub;
 
 
+  // Load notifications together with the
+  // current profile of the user who caused them.
   const {
     data:
       notificationData,
@@ -189,6 +261,10 @@ export default async function NotificationsPage() {
       user_id,
       trip_id,
       actor_user_id,
+      actor_profile:profiles!notifications_actor_user_id_fkey (
+        display_name,
+        avatar_url
+      ),
       type,
       title,
       message,
@@ -219,9 +295,21 @@ export default async function NotificationsPage() {
   }
 
 
-  const notifications =
-    (notificationData ??
-      []) as NotificationRecord[];
+  const notifications:
+    NotificationRecord[] =
+      (
+        notificationData ??
+        []
+      ).map(
+        (notification) => ({
+          ...notification,
+
+          actor_profile:
+            normalizeActivityActorProfile(
+              notification.actor_profile
+            ),
+        })
+      );
 
 
   const unread =
@@ -248,6 +336,7 @@ export default async function NotificationsPage() {
         />
 
 
+        {/* Heading */}
         <header className="mt-8 border-b border-line pb-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -315,6 +404,7 @@ export default async function NotificationsPage() {
             </p>
           </div>
 
+
           <div
             className={
               unread.length >
@@ -334,6 +424,7 @@ export default async function NotificationsPage() {
             </p>
           </div>
 
+
           <div className="rounded-2xl border border-line bg-surface p-5">
             <p className="text-sm text-muted">
               Read
@@ -348,6 +439,7 @@ export default async function NotificationsPage() {
         </section>
 
 
+        {/* Load error */}
         {notificationError && (
           <div className="mt-8 rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-text">
             Unable to load
@@ -356,6 +448,7 @@ export default async function NotificationsPage() {
         )}
 
 
+        {/* Notification history */}
         {notifications.length ===
         0 ? (
           <div className="mt-8 rounded-2xl border border-dashed border-line p-12 text-center">
@@ -397,6 +490,7 @@ export default async function NotificationsPage() {
                     </p>
                   </div>
 
+
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -410,6 +504,7 @@ export default async function NotificationsPage() {
                     <path d="M6 9l6 6 6-6" />
                   </svg>
                 </summary>
+
 
                 <div className="space-y-3 border-t border-line p-4 sm:p-5">
                   {unread.map(
@@ -453,6 +548,7 @@ export default async function NotificationsPage() {
                     </p>
                   </div>
 
+
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -466,6 +562,7 @@ export default async function NotificationsPage() {
                     <path d="M6 9l6 6 6-6" />
                   </svg>
                 </summary>
+
 
                 <div className="space-y-3 border-t border-line p-4 sm:p-5">
                   {read.map(
