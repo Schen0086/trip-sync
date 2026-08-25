@@ -1,77 +1,208 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import {
+  revalidatePath,
+} from "next/cache";
 
-export async function login(formData: FormData) {
-  const supabase = await createClient();
+import {
+  redirect,
+} from "next/navigation";
 
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
-  if (!email || !password) {
-    redirect("/login?error=Email and password are required");
-  }
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
-  }
-
-  revalidatePath("/", "layout");
-  redirect("/dashboard");
-}
-
-export async function signup(formData: FormData) {
-  const supabase = await createClient();
-
-  const displayName = formData.get("displayName") as string;
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  if (!displayName || !email || !password) {
-    redirect(
-        "/signup?error=Display name, email and password are required"
-    );
-  }
-
-  if (password.length < 8) {
-    redirect("/signup?error=Password must be at least 8 characters");
-  }
-
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-        emailRedirectTo: `${siteUrl}/auth/callback`,
-        data: {
-        display_name: displayName.trim(),
-        },
-    },
-  });
-
-  if (error) {
-    redirect(`/signup?error=${encodeURIComponent(error.message)}`);
-  }
-
-  redirect(
-    "/signup?success=Check your email to confirm your account"
+function getText(
+  formData: FormData,
+  name: string
+) {
+  return (
+    (
+      formData.get(name) as
+        | string
+        | null
+    )?.trim() ?? ""
   );
 }
 
+
+function normalizeEmail(
+  email: string
+) {
+  return email
+    .trim()
+    .toLowerCase();
+}
+
+
+export async function login(
+  formData: FormData
+) {
+  const supabase =
+    await createClient();
+
+  const email =
+    normalizeEmail(
+      getText(
+        formData,
+        "email"
+      )
+    );
+
+  const password =
+    getText(
+      formData,
+      "password"
+    );
+
+  if (
+    !email ||
+    !password
+  ) {
+    redirect(
+      "/login?error=Email and password are required"
+    );
+  }
+
+
+  const {
+    error,
+  } =
+    await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+
+  if (error) {
+    redirect(
+      `/login?error=${encodeURIComponent(
+        error.message
+      )}`
+    );
+  }
+
+
+  revalidatePath(
+    "/",
+    "layout"
+  );
+
+  redirect(
+    "/dashboard"
+  );
+}
+
+
+export async function signup(
+  formData: FormData
+) {
+  const supabase =
+    await createClient();
+
+  const displayName =
+    getText(
+      formData,
+      "displayName"
+    );
+
+  const email =
+    normalizeEmail(
+      getText(
+        formData,
+        "email"
+      )
+    );
+
+  const password =
+    getText(
+      formData,
+      "password"
+    );
+
+
+  if (
+    !displayName ||
+    !email ||
+    !password
+  ) {
+    redirect(
+      "/signup?error=Display name, email and password are required"
+    );
+  }
+
+
+  if (
+    displayName.length <
+      2 ||
+    displayName.length >
+      50
+  ) {
+    redirect(
+      "/signup?error=Display name must be between 2 and 50 characters"
+    );
+  }
+
+
+  if (
+    password.length <
+    8
+  ) {
+    redirect(
+      "/signup?error=Password must be at least 8 characters"
+    );
+  }
+
+
+  const {
+    error,
+  } =
+    await supabase.auth.signUp({
+      email,
+      password,
+
+      options: {
+        data: {
+          display_name:
+            displayName,
+        },
+      },
+    });
+
+
+  if (error) {
+    redirect(
+      `/signup?error=${encodeURIComponent(
+        error.message
+      )}`
+    );
+  }
+
+
+  // Supabase intentionally does not always reveal whether
+  // an email is already registered. Keep the response generic
+  // so the signup page cannot be used for email enumeration.
+  redirect(
+    `/signup?success=${encodeURIComponent(
+      "If this email can be registered, a confirmation link has been sent. If you already have an account, log in instead."
+    )}`
+  );
+}
+
+
 export async function logout() {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   await supabase.auth.signOut();
 
-  revalidatePath("/", "layout");
-  redirect("/login");
+  revalidatePath(
+    "/",
+    "layout"
+  );
+
+  redirect(
+    "/login"
+  );
 }
