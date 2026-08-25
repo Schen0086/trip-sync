@@ -16,6 +16,7 @@ import {
   getTripLifecycle,
   getTripLifecycleLabel,
 } from "@/lib/trip-utils";
+import TripOverviewIntelligence from "@/components/trip-overview-intelligence";
 
 type TripPageProps = {
   params: Promise<{
@@ -368,6 +369,30 @@ export default async function TripPage({
             </p>
           </div>
         </section>
+
+        {/* Trip intelligence */}
+        <TripOverviewIntelligence
+          tripId={trip.id}
+          userId={userId}
+          tripStartDate={
+            trip.start_date
+          }
+          tripEndDate={
+            trip.end_date
+          }
+          tripType={
+            trip.trip_type
+          }
+          lifecycle={
+            lifecycle
+          }
+          isTripCreator={
+            isTripCreator
+          }
+          isCurrentUserAttending={
+            isCurrentUserAttending
+          }
+        />
 
         {/* Weather */}
         <TripWeatherPanel

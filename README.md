@@ -19,7 +19,8 @@ It combines itinerary planning, group voting, shared expenses, packing, responsi
 - Personal, required, and shared packing lists
 - Tasks and responsibilities with assignments, priorities, and due dates
 - Personalised dashboard highlighting items that need attention
-- Ttrip activity feeds for collaborative changes
+- Intelligent trip overviews with planning progress, upcoming events, personal action items, and expense balances
+- Trip activity feeds for collaborative changes
 - Personal notifications with unread tracking and management
 - Real-time collaborative updates
 - Responsive desktop and mobile layouts
