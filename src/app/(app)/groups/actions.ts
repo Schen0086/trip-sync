@@ -78,6 +78,15 @@ export async function createGroup(
   revalidatePath("/groups");
   revalidatePath("/trips/new/group");
 
+  // Give direct group creation a confirmation message.
+  if (redirectTo === "/groups") {
+    redirect(
+      `/groups?success=${encodeURIComponent(
+        "Group created"
+      )}`
+    );
+  }
+
   redirect(redirectTo);
 }
 
