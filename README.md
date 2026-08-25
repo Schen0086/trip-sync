@@ -22,6 +22,7 @@ It combines itinerary planning, group voting, shared expenses, packing, responsi
 - Intelligent trip overviews with planning progress, upcoming events, personal action items, and expense balances
 - Trip activity feeds for collaborative changes
 - Personal notifications with unread tracking and management
+- User profile pictures with device-native image selection and avatar fallbacks
 - Real-time collaborative updates
 - Responsive desktop and mobile layouts
 - Light and dark themes
@@ -42,6 +43,7 @@ It combines itinerary planning, group voting, shared expenses, packing, responsi
 - Supabase Authentication
 - Row Level Security
 - Supabase Realtime
+- Supabase Storage
 
 ### Maps & External Services
 
@@ -60,3 +62,4 @@ It combines itinerary planning, group voting, shared expenses, packing, responsi
 - Server-side authentication and route protection
 - Collaborative permission models for trips, groups, expenses, packing, voting, tasks, and notifications
 - Database migrations, triggers, helper functions, and validation implemented through Supabase
+- Secure user-managed profile images using Supabase Storage and Storage RLS policies

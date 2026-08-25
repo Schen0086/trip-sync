@@ -14,6 +14,7 @@ import {
   updateGroup,
   updateMemberRole,
 } from "../actions";
+import Avatar from "@/components/avatar";
 
 type GroupPageProps = {
   params: Promise<{
@@ -423,28 +424,50 @@ export default async function GroupPage({
                   className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 md:flex-row md:items-center md:justify-between"
                 >
                   {/* Member details */}
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <p className="font-medium text-ink">
-                        {memberName}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar
+                      src={
+                        memberProfile
+                          ?.avatar_url ??
+                        null
+                      }
+                      displayName={
+                        memberName
+                      }
+                      size="lg"
+                    />
 
-                        {isCurrentUser && (
-                          <span className="ml-1 text-muted">
-                            (You)
-                          </span>
-                        )}
-                      </p>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <p className="font-medium text-ink">
+                          {
+                            memberName
+                          }
 
-                      <span className="rounded-full bg-surface-soft px-2.5 py-1 text-xs font-medium capitalize text-muted">
-                        {member.role}
-                      </span>
+                          {isCurrentUser && (
+                            <span className="ml-1 text-muted">
+                              (You)
+                            </span>
+                          )}
+                        </p>
+
+                        <span className="rounded-full bg-surface-soft px-2.5 py-1 text-xs font-medium capitalize text-muted">
+                          {
+                            member.role
+                          }
+                        </span>
+                      </div>
+
+                      {memberProfile
+                        ?.username && (
+                        <p className="mt-1 text-sm text-subtle">
+                          @
+                          {
+                            memberProfile.username
+                          }
+                        </p>
+                      )}
                     </div>
-
-                    {memberProfile?.username && (
-                      <p className="mt-1 text-sm text-subtle">
-                        @{memberProfile.username}
-                      </p>
-                    )}
                   </div>
 
                   {/* Owner controls */}

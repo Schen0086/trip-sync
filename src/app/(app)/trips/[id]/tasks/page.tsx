@@ -328,6 +328,10 @@ export default async function TasksPage({
         username:
           | string
           | null;
+
+        avatar_url:
+          | string
+          | null;
       }
     >();
 
@@ -342,7 +346,8 @@ export default async function TasksPage({
       .select(`
         id,
         display_name,
-        username
+        username,
+        avatar_url
       `)
       .in(
         "id",
@@ -384,6 +389,11 @@ export default async function TasksPage({
           profile
             ?.username ??
           null,
+
+        avatarUrl:
+          profile
+            ?.avatar_url ??
+          null,
       };
     }
   );
@@ -409,6 +419,11 @@ export default async function TasksPage({
           username:
             profile
               ?.username ??
+            null,
+
+          avatarUrl:
+            profile
+              ?.avatar_url ??
             null,
         };
       }

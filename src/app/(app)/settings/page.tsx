@@ -8,6 +8,7 @@ import {
   updatePassword,
   updateProfileSettings,
 } from "./actions";
+import ProfileAvatarEditor from "@/components/profile-avatar-editor";
 
 type SettingsPageProps = {
   searchParams: Promise<{
@@ -42,7 +43,7 @@ export default async function SettingsPage({
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "display_name, username, theme_preference"
+      "display_name, username, avatar_url, theme_preference"
     )
     .eq("id", userId)
     .single();
@@ -100,6 +101,20 @@ export default async function SettingsPage({
               Choose how other TripSync users see you.
             </p>
           </div>
+
+          <ProfileAvatarEditor
+            userId={
+              userId
+            }
+            displayName={
+              profile?.display_name ??
+              "Traveller"
+            }
+            initialAvatarUrl={
+              profile?.avatar_url ??
+              null
+            }
+          />
 
           <form
             action={updateProfileSettings}

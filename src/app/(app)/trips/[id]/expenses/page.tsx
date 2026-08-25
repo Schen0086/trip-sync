@@ -270,6 +270,10 @@ export default async function ExpensesPage({
         username:
           | string
           | null;
+
+        avatar_url:
+          | string
+          | null;
       }
     >();
 
@@ -282,7 +286,7 @@ export default async function ExpensesPage({
     } = await supabase
       .from("profiles")
       .select(
-        "id, display_name, username"
+        "id, display_name, username, avatar_url"
       )
       .in(
         "id",
@@ -321,6 +325,10 @@ export default async function ExpensesPage({
           username:
             profile?.username ??
             null,
+
+          avatarUrl:
+            profile?.avatar_url ??
+            null,
         };
       }
     );
@@ -333,6 +341,17 @@ export default async function ExpensesPage({
         profileId
       )?.display_name ??
       "Traveller"
+    );
+  }
+
+  function getAvatarUrl(
+    profileId: string
+  ) {
+    return (
+      profileMap.get(
+        profileId
+      )?.avatar_url ??
+      null
     );
   }
 
@@ -537,6 +556,9 @@ export default async function ExpensesPage({
                                     displayName={getName(
                                       debt.fromUserId
                                     )}
+                                    avatarUrl={getAvatarUrl(
+                                      debt.fromUserId
+                                    )}
                                     highlightCurrentUser
                                   />
 
@@ -550,6 +572,9 @@ export default async function ExpensesPage({
                                       userId
                                     }
                                     displayName={getName(
+                                      debt.toUserId
+                                    )}
+                                    avatarUrl={getAvatarUrl(
                                       debt.toUserId
                                     )}
                                     highlightCurrentUser

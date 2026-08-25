@@ -75,7 +75,14 @@ export type ExpenseCurrency =
 export type ExpenseParticipant = {
   userId: string;
   displayName: string;
-  username: string | null;
+
+  username:
+    | string
+    | null;
+
+  avatarUrl:
+    | string
+    | null;
 };
 
 export type Expense = {

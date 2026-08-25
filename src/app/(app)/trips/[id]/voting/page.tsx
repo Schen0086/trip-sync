@@ -345,7 +345,8 @@ export default async function VotingPage({
       .select(`
         id,
         display_name,
-        username
+        username,
+        avatar_url
       `)
       .in(
         "id",
@@ -370,6 +371,10 @@ export default async function VotingPage({
 
             username:
               profile.username ??
+              null,
+
+            avatar_url:
+              profile.avatar_url ??
               null,
           }
         );
@@ -514,6 +519,17 @@ export default async function VotingPage({
     );
   }
 
+  function getAvatarUrl(
+    profileId: string
+  ) {
+    return (
+      profileMap.get(
+        profileId
+      )?.avatar_url ??
+      null
+    );
+  }
+
   function renderVoteBreakdown(
     itemVotes:
       ItineraryVote[]
@@ -580,6 +596,9 @@ export default async function VotingPage({
                             userId
                           }
                           displayName={getName(
+                            vote.user_id
+                          )}
+                          avatarUrl={getAvatarUrl(
                             vote.user_id
                           )}
                           highlightCurrentUser
@@ -800,10 +819,28 @@ export default async function VotingPage({
               {item.title}
             </h3>
 
-            <p className="mt-1 text-xs text-subtle">
-              Suggested by{" "}
-              {author?.display_name ??
-                "Traveller"}
+            <p className="mt-1 flex items-center gap-1 text-xs text-subtle">
+              <span>
+                Suggested by
+              </span>
+
+              <PersonName
+                userId={
+                  item.created_by
+                }
+                currentUserId={
+                  userId
+                }
+                displayName={
+                  author?.display_name ??
+                  "Traveller"
+                }
+                avatarUrl={
+                  author?.avatar_url ??
+                  null
+                }
+                highlightCurrentUser
+              />
             </p>
           </div>
 

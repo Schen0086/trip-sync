@@ -1,32 +1,60 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   useEffect,
   useRef,
   useState,
 } from "react";
-import { usePathname } from "next/navigation";
-import { logout } from "@/app/login/actions";
+
+import {
+  usePathname,
+} from "next/navigation";
+
+import {
+  logout,
+} from "@/app/login/actions";
+
+import Avatar from "@/components/avatar";
+
 
 type ProfileMenuProps = {
   displayName: string;
+
+  avatarUrl:
+    | string
+    | null;
 };
+
 
 export default function ProfileMenu({
   displayName,
+  avatarUrl,
 }: ProfileMenuProps) {
-  const [open, setOpen] = useState(false);
+  const [
+    open,
+    setOpen,
+  ] = useState(false);
+
 
   const menuRef =
-    useRef<HTMLDivElement>(null);
+    useRef<HTMLDivElement>(
+      null
+    );
 
-  const pathname = usePathname();
+
+  const pathname =
+    usePathname();
+
 
   // Close when page changes
   useEffect(() => {
     setOpen(false);
-  }, [pathname]);
+  }, [
+    pathname,
+  ]);
+
 
   // Close when clicking elsewhere
   useEffect(() => {
@@ -43,13 +71,18 @@ export default function ProfileMenu({
       }
     }
 
+
     function handleEscape(
       event: KeyboardEvent
     ) {
-      if (event.key === "Escape") {
+      if (
+        event.key ===
+        "Escape"
+      ) {
         setOpen(false);
       }
     }
+
 
     document.addEventListener(
       "mousedown",
@@ -60,6 +93,7 @@ export default function ProfileMenu({
       "keydown",
       handleEscape
     );
+
 
     return () => {
       document.removeEventListener(
@@ -74,52 +108,80 @@ export default function ProfileMenu({
     };
   }, []);
 
+
   return (
     <div
-      ref={menuRef}
+      ref={
+        menuRef
+      }
       className="relative shrink-0"
     >
       {/* Profile button */}
       <button
         type="button"
         onClick={() =>
-          setOpen((current) => !current)
+          setOpen(
+            (current) =>
+              !current
+          )
         }
         aria-label="Open profile menu"
-        aria-expanded={open}
+        aria-expanded={
+          open
+        }
         className="flex min-w-14 cursor-pointer flex-col items-center justify-center rounded-xl px-2 py-1.5 text-ink transition hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
       >
-        {/* Profile icon */}
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-surface">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-5 w-5"
-            aria-hidden="true"
-          >
-            <circle
-              cx="12"
-              cy="8"
-              r="4"
-            />
-
-            <path d="M4.5 21a7.5 7.5 0 0115 0" />
-          </svg>
-        </span>
+        <Avatar
+          src={
+            avatarUrl
+          }
+          displayName={
+            displayName
+          }
+          size="md"
+        />
 
         {/* Display name */}
         <span className="mt-1 max-w-20 truncate text-[11px] font-medium leading-none text-muted">
-          {displayName}
+          {
+            displayName
+          }
         </span>
       </button>
 
+
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-lg">
+          {/* Current profile */}
+          <div className="flex items-center gap-3 px-3 py-3">
+            <Avatar
+              src={
+                avatarUrl
+              }
+              displayName={
+                displayName
+              }
+              size="md"
+            />
+
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-ink">
+                {
+                  displayName
+                }
+              </p>
+
+              <p className="text-xs text-subtle">
+                Your profile
+              </p>
+            </div>
+          </div>
+
+
+          <div className="my-1 border-t border-line" />
+
+
           {/* Settings */}
           <Link
             href="/settings"
@@ -147,10 +209,16 @@ export default function ProfileMenu({
             Settings
           </Link>
 
+
           <div className="my-1 border-t border-line" />
 
+
           {/* Log out */}
-          <form action={logout}>
+          <form
+            action={
+              logout
+            }
+          >
             <button
               type="submit"
               className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-ink transition hover:bg-surface-hover"

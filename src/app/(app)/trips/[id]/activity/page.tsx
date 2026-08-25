@@ -15,6 +15,7 @@ import {
   createClient,
 } from "@/lib/supabase/server";
 
+import Avatar from "@/components/avatar";
 
 type ActivityPageProps = {
   params: Promise<{
@@ -156,10 +157,16 @@ export default async function ActivityPage({
   ];
 
 
-  const actorNames =
+  const actorProfiles =
     new Map<
       string,
-      string
+      {
+        displayName: string;
+
+        avatarUrl:
+          | string
+          | null;
+      }
     >();
 
 
@@ -173,7 +180,8 @@ export default async function ActivityPage({
       .from("profiles")
       .select(`
         id,
-        display_name
+        display_name,
+        avatar_url
       `)
       .in(
         "id",
@@ -183,10 +191,17 @@ export default async function ActivityPage({
 
     profiles?.forEach(
       (profile) => {
-        actorNames.set(
+        actorProfiles.set(
           profile.id,
-          profile.display_name ??
-            "Traveller"
+          {
+            displayName:
+              profile.display_name ??
+              "Traveller",
+
+            avatarUrl:
+              profile.avatar_url ??
+              null,
+          }
         );
       }
     );
@@ -367,11 +382,18 @@ export default async function ActivityPage({
                         (
                           event
                         ) => {
+                          const actorProfile =
+                            event.actor_user_id
+                              ? actorProfiles.get(
+                                  event.actor_user_id
+                                )
+                              : null;
+
+
                           const actorName =
                             event.actor_user_id
-                              ? actorNames.get(
-                                  event.actor_user_id
-                                ) ??
+                              ? actorProfile
+                                  ?.displayName ??
                                 "Traveller"
                               : "TripSync";
 
@@ -411,22 +433,38 @@ export default async function ActivityPage({
                                   </div>
 
 
-                                  <p className="mt-3 text-sm leading-6 text-ink">
-                                    <span className="font-semibold">
+                                  <div className="mt-3 flex items-start gap-2">
+                                    {event.actor_user_id && (
+                                      <Avatar
+                                        src={
+                                          actorProfile
+                                            ?.avatarUrl ??
+                                          null
+                                        }
+                                        displayName={
+                                          actorName
+                                        }
+                                        size="sm"
+                                      />
+                                    )}
+
+                                    <p className="min-w-0 text-sm leading-6 text-ink">
+                                      <span className="font-semibold">
+                                        {
+                                          displayedActor
+                                        }
+                                      </span>{" "}
                                       {
-                                        displayedActor
-                                      }
-                                    </span>{" "}
-                                    {
-                                      event.action
-                                    }{" "}
-                                    <span className="font-semibold">
-                                      {
-                                        event.subject
-                                      }
-                                    </span>
-                                    .
-                                  </p>
+                                        event.action
+                                      }{" "}
+                                      <span className="font-semibold">
+                                        {
+                                          event.subject
+                                        }
+                                      </span>
+                                      .
+                                    </p>
+                                  </div>
 
 
                                   {event.detail && (

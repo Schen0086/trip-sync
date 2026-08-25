@@ -23,7 +23,14 @@ export type SuggestionDisplayStatus =
 
 export type ProfileSummary = {
   display_name: string;
-  username: string | null;
+
+  username:
+    | string
+    | null;
+
+  avatar_url:
+    | string
+    | null;
 };
 
 export type ItineraryItem = {

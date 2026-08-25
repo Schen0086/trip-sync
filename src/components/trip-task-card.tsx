@@ -220,6 +220,11 @@ export function TripTaskCard({
                       ?.displayName ??
                     "Traveller"
                   }
+                  avatarUrl={
+                    assignedPerson
+                      ?.avatarUrl ??
+                    null
+                  }
                   highlightCurrentUser
                   variant={
                     isAssignedToCurrentUser

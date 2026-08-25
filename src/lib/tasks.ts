@@ -53,6 +53,10 @@ export type TaskPerson = {
   username:
     | string
     | null;
+
+  avatarUrl:
+    | string
+    | null;
 };
 
 export type TaskDueState =

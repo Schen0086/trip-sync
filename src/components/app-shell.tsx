@@ -31,12 +31,17 @@ type AppShellProps = {
 
   unreadNotificationCount:
     number;
+
+  avatarUrl:
+  | string
+  | null;
 };
 
 
 export default function AppShell({
   children,
   displayName,
+  avatarUrl,
   notifications,
   unreadNotificationCount,
 }: AppShellProps) {
@@ -152,6 +157,9 @@ export default function AppShell({
             <ProfileMenu
               displayName={
                 displayName
+              }
+              avatarUrl={
+                avatarUrl
               }
             />
           </div>

@@ -46,9 +46,10 @@ export default async function AuthenticatedLayout({
     data: profile,
   } = await supabase
     .from("profiles")
-    .select(
-      "display_name"
-    )
+    .select(`
+      display_name,
+      avatar_url
+    `)
     .eq(
       "id",
       userId
@@ -59,6 +60,10 @@ export default async function AuthenticatedLayout({
   const displayName =
     profile?.display_name ??
     "Traveller";
+  
+  const avatarUrl =
+    profile?.avatar_url ??
+    null;
 
 
   // Recent notification preview
@@ -148,6 +153,9 @@ export default async function AuthenticatedLayout({
     <AppShell
       displayName={
         displayName
+      }
+      avatarUrl={
+        avatarUrl
       }
       notifications={
         notifications

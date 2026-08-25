@@ -1,0 +1,804 @@
+"use client";
+
+import {
+  ChangeEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  useRouter,
+} from "next/navigation";
+
+import Avatar from "@/components/avatar";
+
+import {
+  createClient,
+} from "@/lib/supabase/client";
+
+
+type ProfileAvatarEditorProps = {
+  userId: string;
+  displayName: string;
+
+  initialAvatarUrl:
+    | string
+    | null;
+};
+
+
+const MAX_FILE_SIZE =
+  5 * 1024 * 1024;
+
+
+const ALLOWED_TYPES =
+  new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ]);
+
+
+function getExtension(
+  mimeType: string
+) {
+  switch (
+    mimeType
+  ) {
+    case "image/png":
+      return "png";
+
+    case "image/webp":
+      return "webp";
+
+    default:
+      return "jpg";
+  }
+}
+
+
+function getOwnAvatarPath(
+  avatarUrl:
+    | string
+    | null,
+  userId: string
+) {
+  if (!avatarUrl) {
+    return null;
+  }
+
+  const marker =
+    "/storage/v1/object/public/avatars/";
+
+  const markerIndex =
+    avatarUrl.indexOf(
+      marker
+    );
+
+  if (
+    markerIndex === -1
+  ) {
+    return null;
+  }
+
+  try {
+    const rawPath =
+      avatarUrl
+        .slice(
+          markerIndex +
+            marker.length
+        )
+        .split("?")[0];
+
+    const path =
+      decodeURIComponent(
+        rawPath
+      );
+
+    if (
+      !path.startsWith(
+        `${userId}/`
+      )
+    ) {
+      return null;
+    }
+
+    return path;
+  } catch {
+    return null;
+  }
+}
+
+
+export default function ProfileAvatarEditor({
+  userId,
+  displayName,
+  initialAvatarUrl,
+}: ProfileAvatarEditorProps) {
+  const router =
+    useRouter();
+
+  const supabase =
+    createClient();
+
+
+  const inputRef =
+    useRef<HTMLInputElement>(
+      null
+    );
+
+
+  const [
+    avatarUrl,
+    setAvatarUrl,
+  ] = useState<
+    string | null
+  >(
+    initialAvatarUrl
+  );
+
+
+  const [
+    selectedFile,
+    setSelectedFile,
+  ] = useState<
+    File | null
+  >(null);
+
+
+  const [
+    previewUrl,
+    setPreviewUrl,
+  ] = useState<
+    string | null
+  >(null);
+
+
+  const [
+    busy,
+    setBusy,
+  ] = useState(false);
+
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState<
+    string | null
+  >(null);
+
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState<
+    string | null
+  >(null);
+
+
+  // Build a temporary local preview
+  // whenever a new file is selected.
+  useEffect(() => {
+    if (
+      !selectedFile
+    ) {
+      setPreviewUrl(
+        null
+      );
+
+      return;
+    }
+
+    const objectUrl =
+      URL.createObjectURL(
+        selectedFile
+      );
+
+    setPreviewUrl(
+      objectUrl
+    );
+
+    return () => {
+      URL.revokeObjectURL(
+        objectUrl
+      );
+    };
+  }, [
+    selectedFile,
+  ]);
+
+
+  function resetMessages() {
+    setErrorMessage(
+      null
+    );
+
+    setSuccessMessage(
+      null
+    );
+  }
+
+
+  function handleFileChange(
+    event:
+      ChangeEvent<HTMLInputElement>
+  ) {
+    resetMessages();
+
+    const file =
+      event.target
+        .files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+
+    if (
+      !ALLOWED_TYPES.has(
+        file.type
+      )
+    ) {
+      setSelectedFile(
+        null
+      );
+
+      event.target.value =
+        "";
+
+      setErrorMessage(
+        "Choose a JPEG, PNG or WebP image."
+      );
+
+      return;
+    }
+
+
+    if (
+      file.size >
+      MAX_FILE_SIZE
+    ) {
+      setSelectedFile(
+        null
+      );
+
+      event.target.value =
+        "";
+
+      setErrorMessage(
+        "Profile pictures must be 5 MB or smaller."
+      );
+
+      return;
+    }
+
+
+    setSelectedFile(
+      file
+    );
+  }
+
+
+  async function handleUpload() {
+    if (
+      !selectedFile ||
+      busy
+    ) {
+      return;
+    }
+
+    resetMessages();
+
+    setBusy(true);
+
+
+    const oldAvatarPath =
+      getOwnAvatarPath(
+        avatarUrl,
+        userId
+      );
+
+
+    const extension =
+      getExtension(
+        selectedFile.type
+      );
+
+
+    const newPath =
+      `${userId}/${crypto.randomUUID()}.${extension}`;
+
+
+    const {
+      error:
+        uploadError,
+    } =
+      await supabase.storage
+        .from("avatars")
+        .upload(
+          newPath,
+          selectedFile,
+          {
+            cacheControl:
+              "31536000",
+
+            contentType:
+              selectedFile.type,
+
+            upsert: false,
+          }
+        );
+
+
+    if (
+      uploadError
+    ) {
+      console.error(
+        "Failed to upload avatar:",
+        uploadError
+      );
+
+      setErrorMessage(
+        uploadError.message
+      );
+
+      setBusy(false);
+
+      return;
+    }
+
+
+    const {
+      data:
+        publicUrlData,
+    } =
+      supabase.storage
+        .from("avatars")
+        .getPublicUrl(
+          newPath
+        );
+
+
+    const publicUrl =
+      publicUrlData.publicUrl;
+
+
+    // The public profiles table remains
+    // TripSync's authoritative profile.
+    const {
+      data:
+        updatedProfile,
+      error:
+        profileError,
+    } = await supabase
+      .from("profiles")
+      .update({
+        avatar_url:
+          publicUrl,
+
+        updated_at:
+          new Date()
+            .toISOString(),
+      })
+      .eq(
+        "id",
+        userId
+      )
+      .select("id")
+      .maybeSingle();
+
+
+    if (
+      profileError ||
+      !updatedProfile
+    ) {
+      console.error(
+        "Failed to save avatar URL:",
+        profileError
+      );
+
+      // Clean up the newly uploaded
+      // file if the profile update fails.
+      await supabase.storage
+        .from("avatars")
+        .remove([
+          newPath,
+        ]);
+
+      setErrorMessage(
+        "Unable to save your profile picture."
+      );
+
+      setBusy(false);
+
+      return;
+    }
+
+
+    // Keep Supabase Auth metadata
+    // consistent with the public profile.
+    const {
+      error:
+        authMetadataError,
+    } =
+      await supabase.auth.updateUser(
+        {
+          data: {
+            avatar_url:
+              publicUrl,
+          },
+        }
+      );
+
+
+    if (
+      authMetadataError
+    ) {
+      console.error(
+        "Failed to sync avatar to Auth metadata:",
+        authMetadataError
+      );
+    }
+
+
+    // Delete the previous TripSync avatar
+    // only after the new profile URL is saved.
+    if (
+      oldAvatarPath &&
+      oldAvatarPath !==
+        newPath
+    ) {
+      const {
+        error:
+          cleanupError,
+      } =
+        await supabase.storage
+          .from(
+            "avatars"
+          )
+          .remove([
+            oldAvatarPath,
+          ]);
+
+      if (
+        cleanupError
+      ) {
+        console.error(
+          "Failed to remove previous avatar:",
+          cleanupError
+        );
+      }
+    }
+
+
+    setAvatarUrl(
+      publicUrl
+    );
+
+    setSelectedFile(
+      null
+    );
+
+    if (
+      inputRef.current
+    ) {
+      inputRef.current.value =
+        "";
+    }
+
+
+    setSuccessMessage(
+      "Profile picture updated."
+    );
+
+    setBusy(false);
+
+    router.refresh();
+  }
+
+
+  async function handleRemove() {
+    if (
+      !avatarUrl ||
+      busy
+    ) {
+      return;
+    }
+
+    resetMessages();
+
+    setBusy(true);
+
+
+    const oldAvatarPath =
+      getOwnAvatarPath(
+        avatarUrl,
+        userId
+      );
+
+
+    const {
+      data:
+        updatedProfile,
+      error:
+        profileError,
+    } = await supabase
+      .from("profiles")
+      .update({
+        avatar_url:
+          null,
+
+        updated_at:
+          new Date()
+            .toISOString(),
+      })
+      .eq(
+        "id",
+        userId
+      )
+      .select("id")
+      .maybeSingle();
+
+
+    if (
+      profileError ||
+      !updatedProfile
+    ) {
+      console.error(
+        "Failed to remove avatar:",
+        profileError
+      );
+
+      setErrorMessage(
+        "Unable to remove your profile picture."
+      );
+
+      setBusy(false);
+
+      return;
+    }
+
+
+    const {
+      error:
+        authMetadataError,
+    } =
+      await supabase.auth.updateUser(
+        {
+          data: {
+            avatar_url:
+              null,
+          },
+        }
+      );
+
+
+    if (
+      authMetadataError
+    ) {
+      console.error(
+        "Failed to clear avatar Auth metadata:",
+        authMetadataError
+      );
+    }
+
+
+    if (
+      oldAvatarPath
+    ) {
+      const {
+        error:
+          removeError,
+      } =
+        await supabase.storage
+          .from(
+            "avatars"
+          )
+          .remove([
+            oldAvatarPath,
+          ]);
+
+      if (
+        removeError
+      ) {
+        console.error(
+          "Failed to remove avatar file:",
+          removeError
+        );
+      }
+    }
+
+
+    setAvatarUrl(
+      null
+    );
+
+    setSelectedFile(
+      null
+    );
+
+    setSuccessMessage(
+      "Profile picture removed."
+    );
+
+    setBusy(false);
+
+    router.refresh();
+  }
+
+
+  const displayedAvatar =
+    previewUrl ??
+    avatarUrl;
+
+
+  return (
+    <div className="mt-7 rounded-2xl border border-line bg-surface-soft p-5">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+        {/* Avatar preview */}
+        <Avatar
+          src={
+            displayedAvatar
+          }
+          displayName={
+            displayName
+          }
+          size="xl"
+        />
+
+
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold text-ink">
+            Profile picture
+          </h3>
+
+          <p className="mt-1 text-sm leading-5 text-muted">
+            Add a photo so
+            friends can recognise
+            you throughout
+            TripSync.
+          </p>
+
+
+          {/* Native device picker */}
+          <input
+            ref={
+              inputRef
+            }
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={
+              handleFileChange
+            }
+            className="sr-only"
+          />
+
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={
+                busy
+              }
+              onClick={() =>
+                inputRef.current
+                  ?.click()
+              }
+              className="cursor-pointer rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {avatarUrl
+                ? "Choose new photo"
+                : "Choose photo"}
+            </button>
+
+
+            {selectedFile && (
+              <button
+                type="button"
+                disabled={
+                  busy
+                }
+                onClick={
+                  handleUpload
+                }
+                className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy
+                  ? "Uploading..."
+                  : "Save photo"}
+              </button>
+            )}
+
+
+            {avatarUrl &&
+              !selectedFile && (
+                <button
+                  type="button"
+                  disabled={
+                    busy
+                  }
+                  onClick={
+                    handleRemove
+                  }
+                  className="cursor-pointer rounded-xl border border-danger-border bg-danger-surface px-4 py-2.5 text-sm font-medium text-danger-text disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busy
+                    ? "Removing..."
+                    : "Remove photo"}
+                </button>
+              )}
+          </div>
+
+
+          {selectedFile && (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2">
+              <p className="min-w-0 truncate text-xs text-muted">
+                {
+                  selectedFile.name
+                }
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedFile(
+                    null
+                  );
+
+                  if (
+                    inputRef.current
+                  ) {
+                    inputRef.current.value =
+                      "";
+                  }
+                }}
+                className="shrink-0 cursor-pointer text-xs font-medium text-muted hover:text-ink"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+
+          <p className="mt-3 text-xs leading-5 text-subtle">
+            JPEG, PNG or WebP,
+            up to 5 MB. On a
+            phone or tablet, the
+            native photo picker
+            can offer your camera,
+            photo library or
+            device files. On a
+            laptop or desktop,
+            this opens the normal
+            file picker.
+          </p>
+
+
+          {errorMessage && (
+            <p
+              role="alert"
+              className="mt-3 text-sm text-danger-text"
+            >
+              {
+                errorMessage
+              }
+            </p>
+          )}
+
+
+          {successMessage && (
+            <p
+              role="status"
+              className="mt-3 text-sm text-success-text"
+            >
+              {
+                successMessage
+              }
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
