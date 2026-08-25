@@ -155,7 +155,8 @@ export default async function PlacesPage({
       .select(`
         id,
         display_name,
-        username
+        username,
+        avatar_url
       `)
       .in(
         "id",
@@ -173,6 +174,10 @@ export default async function PlacesPage({
 
             username:
               profile.username ??
+              null,
+
+            avatar_url:
+              profile.avatar_url ??
               null,
           }
         );

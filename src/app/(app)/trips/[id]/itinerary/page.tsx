@@ -170,7 +170,7 @@ export default async function ItineraryPage({
     } = await supabase
       .from("profiles")
       .select(
-        "id, display_name, username"
+        "id, display_name, username, avatar_url"
       )
       .in(
         "id",
@@ -197,6 +197,10 @@ export default async function ItineraryPage({
 
               username:
                 profile.username ??
+                null,
+
+              avatar_url:
+                profile.avatar_url ??
                 null,
             }
           );

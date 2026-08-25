@@ -119,7 +119,7 @@ export default async function NewExpensePage({
     } = await supabase
       .from("profiles")
       .select(
-        "id, display_name, username"
+        "id, display_name, username, avatar_url"
       )
       .in(
         "id",
@@ -154,6 +154,10 @@ export default async function NewExpensePage({
 
             username:
               profile?.username ??
+              null,
+
+            avatarUrl:
+              profile?.avatar_url ??
               null,
           };
         }
