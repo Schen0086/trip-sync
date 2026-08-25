@@ -1,43 +1,154 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import {
+  revalidatePath,
+} from "next/cache";
+
+import {
+  redirect,
+} from "next/navigation";
+
+import {
+  createClient,
+} from "@/lib/supabase/server";
+
+import {
+  formatProfileChangeAvailableAt,
+  getProfileChangeCooldownState,
+} from "@/lib/profile-change-cooldown";
+
+
+function getText(
+  formData: FormData,
+  name: string
+) {
+  return (
+    (
+      formData.get(name) as
+        | string
+        | null
+    )?.trim() ?? ""
+  );
+}
+
+
+function redirectForCooldown(
+  fieldLabel: string,
+  lastChangedAt:
+    | string
+    | null
+) {
+  const cooldown =
+    getProfileChangeCooldownState(
+      lastChangedAt
+    );
+
+
+  if (
+    !cooldown.isLocked ||
+    !cooldown.availableAt
+  ) {
+    return;
+  }
+
+
+  redirect(
+    `/settings?error=${encodeURIComponent(
+      `${fieldLabel} can only be changed once every 7 days. You can change it again on ${formatProfileChangeAvailableAt(
+        cooldown.availableAt
+      )}.`
+    )}`
+  );
+}
+
 
 export async function updateProfileSettings(
   formData: FormData
 ) {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
+
 
   // Check authentication
-  const { data, error: authError } =
+  const {
+    data,
+    error:
+      authError,
+  } =
     await supabase.auth.getClaims();
 
-  if (authError || !data?.claims) {
+
+  if (
+    authError ||
+    !data?.claims
+  ) {
     redirect("/login");
   }
 
-  const userId = data.claims.sub;
 
-  // Read profile
+  const userId =
+    data.claims.sub;
+
+
+  // Load the current profile so only fields
+  // that actually changed consume a cooldown.
+  const {
+    data:
+      currentProfile,
+    error:
+      profileLoadError,
+  } = await supabase
+    .from("profiles")
+    .select(`
+      display_name,
+      username,
+      display_name_changed_at,
+      username_changed_at
+    `)
+    .eq(
+      "id",
+      userId
+    )
+    .maybeSingle();
+
+
+  if (
+    profileLoadError ||
+    !currentProfile
+  ) {
+    console.error(
+      "Failed to load profile:",
+      profileLoadError
+    );
+
+    redirect(
+      `/settings?error=${encodeURIComponent(
+        "Unable to load your profile"
+      )}`
+    );
+  }
+
+
+  // Read profile fields
   const displayName =
-    (
-      formData.get(
-        "displayName"
-      ) as string
-    )?.trim();
+    getText(
+      formData,
+      "displayName"
+    );
+
 
   const usernameInput =
-    (
-      formData.get(
-        "username"
-      ) as string
-    )?.trim();
+    getText(
+      formData,
+      "username"
+    );
+
 
   const username =
     usernameInput.length > 0
       ? usernameInput.toLowerCase()
       : null;
+
 
   // Validate display name
   if (
@@ -52,10 +163,13 @@ export async function updateProfileSettings(
     );
   }
 
+
   // Validate username
   if (
     username &&
-    !/^[a-z0-9_]{3,30}$/.test(username)
+    !/^[a-z0-9_]{3,30}$/.test(
+      username
+    )
   ) {
     redirect(
       `/settings?error=${encodeURIComponent(
@@ -64,25 +178,101 @@ export async function updateProfileSettings(
     );
   }
 
-  // Update profile
-  const { data: updatedProfile, error } =
-    await supabase
-      .from("profiles")
-      .update({
-        display_name: displayName,
-        username,
-        updated_at:
-          new Date().toISOString(),
-      })
-      .eq("id", userId)
-      .select("id")
-      .maybeSingle();
+
+  const currentDisplayName =
+    currentProfile
+      .display_name
+      ?.trim() ??
+    "";
+
+
+  const currentUsername =
+    currentProfile
+      .username
+      ?.trim()
+      .toLowerCase() ??
+    null;
+
+
+  const displayNameChanged =
+    displayName !==
+    currentDisplayName;
+
+
+  const usernameChanged =
+    username !==
+    currentUsername;
+
+
+  if (
+    !displayNameChanged &&
+    !usernameChanged
+  ) {
+    redirect(
+      `/settings?error=${encodeURIComponent(
+        "No profile changes to save"
+      )}`
+    );
+  }
+
+
+  // Enforce friendly server-side cooldown checks.
+  // The database trigger provides a second layer.
+  if (
+    displayNameChanged
+  ) {
+    redirectForCooldown(
+      "Display name",
+      currentProfile
+        .display_name_changed_at
+    );
+  }
+
+
+  if (
+    usernameChanged
+  ) {
+    redirectForCooldown(
+      "Username",
+      currentProfile
+        .username_changed_at
+    );
+  }
+
+
+  // Update profile.
+  // The database trigger automatically timestamps
+  // whichever identity fields actually changed.
+  const {
+    data:
+      updatedProfile,
+    error,
+  } = await supabase
+    .from("profiles")
+    .update({
+      display_name:
+        displayName,
+
+      username,
+
+      updated_at:
+        new Date()
+          .toISOString(),
+    })
+    .eq(
+      "id",
+      userId
+    )
+    .select("id")
+    .maybeSingle();
+
 
   if (error) {
     console.error(
       "Failed to update profile:",
       error
     );
+
 
     if (
       error.code ===
@@ -95,12 +285,40 @@ export async function updateProfileSettings(
       );
     }
 
+
+    if (
+      error.message.includes(
+        "DISPLAY_NAME_CHANGE_COOLDOWN"
+      )
+    ) {
+      redirect(
+        `/settings?error=${encodeURIComponent(
+          "Your display name was changed too recently. Refresh Settings to see when it can be changed again."
+        )}`
+      );
+    }
+
+
+    if (
+      error.message.includes(
+        "USERNAME_CHANGE_COOLDOWN"
+      )
+    ) {
+      redirect(
+        `/settings?error=${encodeURIComponent(
+          "Your username was changed too recently. Refresh Settings to see when it can be changed again."
+        )}`
+      );
+    }
+
+
     redirect(
       `/settings?error=${encodeURIComponent(
         "Unable to update profile"
       )}`
     );
   }
+
 
   if (!updatedProfile) {
     redirect(
@@ -110,29 +328,42 @@ export async function updateProfileSettings(
     );
   }
 
-  // Keep Auth metadata synchronized with
-  // the TripSync display name.
-  const {
-    error: authUpdateError,
-  } = await supabase.auth.updateUser({
-    data: {
-      display_name:
-        displayName,
-    },
-  });
 
-  if (authUpdateError) {
-    console.error(
-      "Failed to sync display name to Auth:",
+  // Keep Supabase Auth metadata synchronized
+  // when the display name itself changed.
+  if (
+    displayNameChanged
+  ) {
+    const {
+      error:
+        authUpdateError,
+    } =
+      await supabase.auth.updateUser(
+        {
+          data: {
+            display_name:
+              displayName,
+          },
+        }
+      );
+
+
+    if (
       authUpdateError
-    );
+    ) {
+      console.error(
+        "Failed to sync display name to Auth:",
+        authUpdateError
+      );
 
-    redirect(
-      `/settings?error=${encodeURIComponent(
-        "Profile was updated, but account metadata could not be synchronized"
-      )}`
-    );
+      redirect(
+        `/settings?error=${encodeURIComponent(
+          "Profile was updated, but account metadata could not be synchronized"
+        )}`
+      );
+    }
   }
+
 
   // Refresh shared layout
   revalidatePath(
@@ -144,6 +375,7 @@ export async function updateProfileSettings(
     "/settings"
   );
 
+
   redirect(
     `/settings?success=${encodeURIComponent(
       "Profile updated"
@@ -151,33 +383,52 @@ export async function updateProfileSettings(
   );
 }
 
+
 export async function updateEmail(
   formData: FormData
 ) {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
+
 
   // Check authentication
-  const { data, error: authError } =
+  const {
+    data,
+    error:
+      authError,
+  } =
     await supabase.auth.getClaims();
 
-  if (authError || !data?.claims) {
+
+  if (
+    authError ||
+    !data?.claims
+  ) {
     redirect("/login");
   }
 
+
+  const userId =
+    data.claims.sub;
+
+
   // Read email
   const newEmail =
-    (
-      formData.get(
-        "email"
-      ) as string
-    )
-      ?.trim()
-      .toLowerCase();
+    getText(
+      formData,
+      "email"
+    ).toLowerCase();
+
 
   const currentEmail =
-    typeof data.claims.email === "string"
-      ? data.claims.email.toLowerCase()
+    typeof
+      data.claims.email ===
+    "string"
+      ? data.claims.email
+          .trim()
+          .toLowerCase()
       : "";
+
 
   if (
     !newEmail ||
@@ -190,7 +441,11 @@ export async function updateEmail(
     );
   }
 
-  if (newEmail === currentEmail) {
+
+  if (
+    newEmail ===
+    currentEmail
+  ) {
     redirect(
       `/settings?error=${encodeURIComponent(
         "That is already your current email address"
@@ -198,11 +453,60 @@ export async function updateEmail(
     );
   }
 
-  // Request email change
-  const { error } =
-    await supabase.auth.updateUser({
-      email: newEmail,
-    });
+
+  // Check the user's email-change cooldown.
+  const {
+    data:
+      profile,
+    error:
+      profileError,
+  } = await supabase
+    .from("profiles")
+    .select(
+      "email_change_requested_at"
+    )
+    .eq(
+      "id",
+      userId
+    )
+    .maybeSingle();
+
+
+  if (
+    profileError ||
+    !profile
+  ) {
+    console.error(
+      "Failed to load email cooldown:",
+      profileError
+    );
+
+    redirect(
+      `/settings?error=${encodeURIComponent(
+        "Unable to check your email change status"
+      )}`
+    );
+  }
+
+
+  redirectForCooldown(
+    "Email",
+    profile
+      .email_change_requested_at
+  );
+
+
+  // Request email change through Supabase Auth.
+  const {
+    error,
+  } =
+    await supabase.auth.updateUser(
+      {
+        email:
+          newEmail,
+      }
+    );
+
 
   if (error) {
     console.error(
@@ -217,34 +521,82 @@ export async function updateEmail(
     );
   }
 
+
+  // Auth accepted the request, so begin
+  // the seven-day email cooldown.
+  const {
+    error:
+      cooldownError,
+  } =
+    await supabase.rpc(
+      "mark_email_change_requested"
+    );
+
+
+  if (cooldownError) {
+    console.error(
+      "Email change was accepted but cooldown tracking failed:",
+      cooldownError
+    );
+
+    redirect(
+      `/settings?error=${encodeURIComponent(
+        "Your email change was requested, but its cooldown could not be recorded. Refresh Settings before trying again."
+      )}`
+    );
+  }
+
+
   // Refresh account data
-  revalidatePath("/", "layout");
-  revalidatePath("/settings");
+  revalidatePath(
+    "/",
+    "layout"
+  );
+
+  revalidatePath(
+    "/settings"
+  );
+
 
   redirect(
     `/settings?success=${encodeURIComponent(
-      "Email change requested. Check your email for confirmation."
+      "Email change requested. Check your email for confirmation. You can request another email change in 7 days."
     )}`
   );
 }
 
+
 export async function updatePassword(
   formData: FormData
 ) {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
+
 
   // Check authentication
-  const { data, error: authError } =
+  const {
+    data,
+    error:
+      authError,
+  } =
     await supabase.auth.getClaims();
 
-  if (authError || !data?.claims) {
+
+  if (
+    authError ||
+    !data?.claims
+  ) {
     redirect("/login");
   }
 
+
   const email =
-    typeof data.claims.email === "string"
+    typeof
+      data.claims.email ===
+    "string"
       ? data.claims.email
       : null;
+
 
   if (!email) {
     redirect(
@@ -254,21 +606,25 @@ export async function updatePassword(
     );
   }
 
+
   // Read passwords
   const currentPassword =
     formData.get(
       "currentPassword"
     ) as string;
 
+
   const newPassword =
     formData.get(
       "newPassword"
     ) as string;
 
+
   const confirmPassword =
     formData.get(
       "confirmPassword"
     ) as string;
+
 
   // Validate fields
   if (
@@ -283,13 +639,18 @@ export async function updatePassword(
     );
   }
 
-  if (newPassword.length < 8) {
+
+  if (
+    newPassword.length <
+    8
+  ) {
     redirect(
       `/settings?error=${encodeURIComponent(
         "New password must be at least 8 characters"
       )}`
     );
   }
+
 
   if (
     newPassword !==
@@ -302,6 +663,7 @@ export async function updatePassword(
     );
   }
 
+
   if (
     currentPassword ===
     newPassword
@@ -313,14 +675,24 @@ export async function updatePassword(
     );
   }
 
-  // Verify current password
-  const { error: passwordError } =
-    await supabase.auth.signInWithPassword({
-      email,
-      password: currentPassword,
-    });
 
-  if (passwordError) {
+  // Verify current password
+  const {
+    error:
+      passwordError,
+  } =
+    await supabase.auth.signInWithPassword(
+      {
+        email,
+        password:
+          currentPassword,
+      }
+    );
+
+
+  if (
+    passwordError
+  ) {
     redirect(
       `/settings?error=${encodeURIComponent(
         "Current password is incorrect"
@@ -328,11 +700,18 @@ export async function updatePassword(
     );
   }
 
+
   // Change password
-  const { error } =
-    await supabase.auth.updateUser({
-      password: newPassword,
-    });
+  const {
+    error,
+  } =
+    await supabase.auth.updateUser(
+      {
+        password:
+          newPassword,
+      }
+    );
+
 
   if (error) {
     console.error(
@@ -347,8 +726,13 @@ export async function updatePassword(
     );
   }
 
+
   // Refresh account data
-  revalidatePath("/", "layout");
+  revalidatePath(
+    "/",
+    "layout"
+  );
+
 
   redirect(
     `/settings?success=${encodeURIComponent(
