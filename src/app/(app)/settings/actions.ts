@@ -84,7 +84,10 @@ export async function updateProfileSettings(
       error
     );
 
-    if (error.code === "23505") {
+    if (
+      error.code ===
+      "23505"
+    ) {
       redirect(
         `/settings?error=${encodeURIComponent(
           "That username is already taken"
@@ -107,9 +110,39 @@ export async function updateProfileSettings(
     );
   }
 
+  // Keep Auth metadata synchronized with
+  // the TripSync display name.
+  const {
+    error: authUpdateError,
+  } = await supabase.auth.updateUser({
+    data: {
+      display_name:
+        displayName,
+    },
+  });
+
+  if (authUpdateError) {
+    console.error(
+      "Failed to sync display name to Auth:",
+      authUpdateError
+    );
+
+    redirect(
+      `/settings?error=${encodeURIComponent(
+        "Profile was updated, but account metadata could not be synchronized"
+      )}`
+    );
+  }
+
   // Refresh shared layout
-  revalidatePath("/", "layout");
-  revalidatePath("/settings");
+  revalidatePath(
+    "/",
+    "layout"
+  );
+
+  revalidatePath(
+    "/settings"
+  );
 
   redirect(
     `/settings?success=${encodeURIComponent(
