@@ -39,8 +39,10 @@ export default function TripNavigation({
     setMobileOpen,
   ] = useState(false);
 
+
   const basePath =
     `/trips/${tripId}`;
+
 
   const items:
     TripNavigationItem[] = [
@@ -48,6 +50,13 @@ export default function TripNavigation({
       key: "overview",
       label: "Overview",
       href: basePath,
+    },
+
+    {
+      key: "activity",
+      label: "Activity",
+      href:
+        `${basePath}/activity`,
     },
 
     {
@@ -107,6 +116,14 @@ export default function TripNavigation({
 
 
   function getActiveKey() {
+    if (
+      pathname.startsWith(
+        `${basePath}/activity`
+      )
+    ) {
+      return "activity";
+    }
+
     if (
       pathname.startsWith(
         `${basePath}/itinerary`
@@ -170,6 +187,7 @@ export default function TripNavigation({
   const activeKey =
     getActiveKey();
 
+
   const activeItem =
     items.find(
       (item) =>
@@ -178,7 +196,6 @@ export default function TripNavigation({
     ) ?? items[0];
 
 
-  // Close mobile menu after navigation
   useEffect(() => {
     setMobileOpen(
       false
@@ -190,7 +207,7 @@ export default function TripNavigation({
 
   return (
     <nav aria-label="Trip navigation">
-      {/* Desktop navigation */}
+      {/* Desktop */}
       <div className="hidden items-center gap-3 md:flex">
         <div className="min-w-0 shrink pr-3">
           <p className="truncate text-xs font-medium uppercase tracking-wide text-subtle">
@@ -202,9 +219,13 @@ export default function TripNavigation({
           </p>
         </div>
 
+
         <div className="h-8 w-px shrink-0 bg-line" />
 
-        <div className="flex min-w-0 flex-1 items-center gap-1">
+
+        {/* Horizontal scrolling prevents the
+            growing trip nav from overflowing. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {items.map(
             (item) => {
               const active =
@@ -226,8 +247,8 @@ export default function TripNavigation({
                   }
                   className={
                     active
-                      ? "whitespace-nowrap rounded-xl bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700"
-                      : "whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-surface-hover hover:text-ink"
+                      ? "shrink-0 whitespace-nowrap rounded-xl bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700"
+                      : "shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-surface-hover hover:text-ink"
                   }
                 >
                   {
@@ -239,6 +260,7 @@ export default function TripNavigation({
           )}
         </div>
       </div>
+
 
       {/* Mobile collapsible navigation */}
       <div className="md:hidden">
@@ -267,6 +289,7 @@ export default function TripNavigation({
             </p>
           </div>
 
+
           <div className="flex shrink-0 items-center gap-2">
             <span className="text-xs font-medium text-muted">
               Sections
@@ -290,6 +313,7 @@ export default function TripNavigation({
             </svg>
           </div>
         </button>
+
 
         {mobileOpen && (
           <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-2 shadow-lg">
