@@ -8,6 +8,7 @@ import BackButton from "@/components/back-button";
 import ConfirmActionButton from "@/components/confirm-action-button";
 import ItineraryItemDetails from "@/components/itinerary-item-details";
 import PersonName from "@/components/person-name";
+import SuggestionDiscussion from "@/components/suggestion-discussion";
 
 import {
   createClient,
@@ -897,6 +898,22 @@ export default async function VotingPage({
             </div>
           </div>
 
+          {/* Historical discussion */}
+          <SuggestionDiscussion
+            tripId={
+              tripId
+            }
+            itemId={
+              item.id
+            }
+            currentUserId={
+              userId
+            }
+            canComment={
+              false
+            }
+          />
+
           <div className="mt-6 flex flex-wrap gap-3 border-t border-line pt-5">
             {status ===
               "accepted" && (
@@ -1479,6 +1496,22 @@ export default async function VotingPage({
                             </button>
                           </form>
                         )}
+
+                        {/* Suggestion discussion */}
+                        <SuggestionDiscussion
+                          tripId={
+                            tripId
+                          }
+                          itemId={
+                            item.id
+                          }
+                          currentUserId={
+                            userId
+                          }
+                          canComment={
+                            true
+                          }
+                        />
 
                         {/* Creator decision */}
                         {isTripCreator && (

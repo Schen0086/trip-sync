@@ -2,7 +2,7 @@
 
 TripSync is a travel planning web application I designed for individuals and friend groups to organise trips in one place.
 
-It combines itinerary planning, group voting, shared expenses, packing, responsibilities, maps, weather, notifications, and real-time collaboration into a single responsive application.
+It combines itinerary planning, group voting and discussions, shared expenses, packing, responsibilities, maps, weather, notifications, and real-time collaboration into a single responsive application.
 
 ## Features
 
@@ -10,7 +10,7 @@ It combines itinerary planning, group voting, shared expenses, packing, responsi
 - Group creation, membership, roles, and invite codes
 - Day-by-day itineraries with activities, transport, and accommodation
 - Drag-and-drop itinerary ordering and schedule conflict detection
-- Group suggestions and voting
+- Group suggestions, voting, and discussion threads
 - Suggestion acceptance, rejection, and archiving
 - Saved places and location discovery
 - Interactive trip maps with filtering
@@ -60,6 +60,6 @@ It combines itinerary planning, group voting, shared expenses, packing, responsi
 - Responsive, mobile-first interface
 - Persistent user theme preferences
 - Server-side authentication and route protection
-- Collaborative permission models for trips, groups, expenses, packing, voting, tasks, and notifications
+- Collaborative permission models for trips, groups, expenses, packing, voting, discussions, tasks, and notifications
 - Database migrations, triggers, helper functions, and validation implemented through Supabase
 - Secure user-managed profile images using Supabase Storage and Storage RLS policies
