@@ -344,17 +344,6 @@ export default async function ExpensesPage({
     );
   }
 
-  function getAvatarUrl(
-    profileId: string
-  ) {
-    return (
-      profileMap.get(
-        profileId
-      )?.avatar_url ??
-      null
-    );
-  }
-
   const splitsByExpense =
     new Map<
       string,
@@ -545,7 +534,7 @@ export default async function ExpensesPage({
                                     : "border-line bg-surface"
                                 }`}
                               >
-                                <p className="text-sm text-ink">
+                                <p className="text-sm leading-6 text-ink">
                                   <PersonName
                                     userId={
                                       debt.fromUserId
@@ -554,15 +543,14 @@ export default async function ExpensesPage({
                                       userId
                                     }
                                     displayName={getName(
-                                      debt.fromUserId
-                                    )}
-                                    avatarUrl={getAvatarUrl(
                                       debt.fromUserId
                                     )}
                                     highlightCurrentUser
                                   />
 
-                                  {" owes "}
+                                  <span className="mx-1">
+                                    owes
+                                  </span>
 
                                   <PersonName
                                     userId={
@@ -572,9 +560,6 @@ export default async function ExpensesPage({
                                       userId
                                     }
                                     displayName={getName(
-                                      debt.toUserId
-                                    )}
-                                    avatarUrl={getAvatarUrl(
                                       debt.toUserId
                                     )}
                                     highlightCurrentUser
@@ -582,10 +567,10 @@ export default async function ExpensesPage({
                                 </p>
 
                                 <p
-                                className={`font-semibold ${
-                                  involvesCurrentUser
-                                    ? "text-brand-700"
-                                    : "text-ink"
+                                  className={`font-semibold ${
+                                    involvesCurrentUser
+                                      ? "text-brand-700"
+                                      : "text-ink"
                                   }`}
                                 >
                                   {formatMoney(
@@ -593,7 +578,7 @@ export default async function ExpensesPage({
                                     currency.currency
                                   )}
                                 </p>
-                            </div>
+                              </div>
                             );
                         }
                         )}
