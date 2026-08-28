@@ -3,9 +3,20 @@ export type TripTaskPriority =
   | "normal"
   | "high";
 
+
 export type TripTaskStatus =
   | "open"
   | "completed";
+
+
+export type TripTaskCategory =
+  | "booking"
+  | "transport"
+  | "documents"
+  | "payments"
+  | "shopping"
+  | "other";
+
 
 export type TripTask = {
   id: string;
@@ -22,6 +33,9 @@ export type TripTask = {
   description:
     | string
     | null;
+
+  category:
+    TripTaskCategory;
 
   due_date:
     | string
@@ -45,6 +59,7 @@ export type TripTask = {
   updated_at: string;
 };
 
+
 export type TaskPerson = {
   userId: string;
 
@@ -59,11 +74,14 @@ export type TaskPerson = {
     | null;
 };
 
+
 export type TaskDueState =
   | "overdue"
   | "today"
+  | "soon"
   | "upcoming"
   | "none";
+
 
 export const TASK_PRIORITY_OPTIONS: {
   value: TripTaskPriority;
@@ -83,6 +101,38 @@ export const TASK_PRIORITY_OPTIONS: {
   },
 ];
 
+
+export const TASK_CATEGORY_OPTIONS: {
+  value: TripTaskCategory;
+  label: string;
+}[] = [
+  {
+    value: "booking",
+    label: "Booking",
+  },
+  {
+    value: "transport",
+    label: "Transport",
+  },
+  {
+    value: "documents",
+    label: "Documents",
+  },
+  {
+    value: "payments",
+    label: "Payments",
+  },
+  {
+    value: "shopping",
+    label: "Shopping",
+  },
+  {
+    value: "other",
+    label: "Other",
+  },
+];
+
+
 export function isTaskPriority(
   value: string
 ): value is TripTaskPriority {
@@ -91,6 +141,17 @@ export function isTaskPriority(
       option.value === value
   );
 }
+
+
+export function isTaskCategory(
+  value: string
+): value is TripTaskCategory {
+  return TASK_CATEGORY_OPTIONS.some(
+    (option) =>
+      option.value === value
+  );
+}
+
 
 export function getTaskPriorityLabel(
   priority:
@@ -105,6 +166,22 @@ export function getTaskPriorityLabel(
     "Normal"
   );
 }
+
+
+export function getTaskCategoryLabel(
+  category:
+    TripTaskCategory
+) {
+  return (
+    TASK_CATEGORY_OPTIONS.find(
+      (option) =>
+        option.value ===
+        category
+    )?.label ??
+    "Other"
+  );
+}
+
 
 export function formatTaskDueDate(
   date: string
@@ -121,6 +198,37 @@ export function formatTaskDueDate(
     }
   );
 }
+
+
+function differenceInDays(
+  firstDate: string,
+  secondDate: string
+) {
+  const first =
+    new Date(
+      `${firstDate}T00:00:00Z`
+    );
+
+  const second =
+    new Date(
+      `${secondDate}T00:00:00Z`
+    );
+
+
+  return Math.round(
+    (
+      first.getTime() -
+      second.getTime()
+    ) /
+      (
+        24 *
+        60 *
+        60 *
+        1000
+      )
+  );
+}
+
 
 export function getTaskDueState(
   task: Pick<
@@ -139,12 +247,14 @@ export function getTaskDueState(
     return "none";
   }
 
+
   if (
     task.due_date <
     today
   ) {
     return "overdue";
   }
+
 
   if (
     task.due_date ===
@@ -153,8 +263,101 @@ export function getTaskDueState(
     return "today";
   }
 
+
+  const daysUntil =
+    differenceInDays(
+      task.due_date,
+      today
+    );
+
+
+  if (
+    daysUntil <= 3
+  ) {
+    return "soon";
+  }
+
+
   return "upcoming";
 }
+
+
+export function getTaskDueLabel(
+  task: Pick<
+    TripTask,
+    "status" | "due_date"
+  >,
+  today = new Date()
+    .toISOString()
+    .slice(0, 10)
+) {
+  if (
+    !task.due_date
+  ) {
+    return "No due date";
+  }
+
+
+  if (
+    task.status ===
+    "completed"
+  ) {
+    return `Due ${formatTaskDueDate(
+      task.due_date
+    )}`;
+  }
+
+
+  const daysUntil =
+    differenceInDays(
+      task.due_date,
+      today
+    );
+
+
+  if (
+    daysUntil < 0
+  ) {
+    const overdueDays =
+      Math.abs(
+        daysUntil
+      );
+
+
+    return `Overdue by ${overdueDays} ${
+      overdueDays === 1
+        ? "day"
+        : "days"
+    }`;
+  }
+
+
+  if (
+    daysUntil === 0
+  ) {
+    return "Due today";
+  }
+
+
+  if (
+    daysUntil === 1
+  ) {
+    return "Due tomorrow";
+  }
+
+
+  if (
+    daysUntil <= 3
+  ) {
+    return `Due in ${daysUntil} days`;
+  }
+
+
+  return `Due ${formatTaskDueDate(
+    task.due_date
+  )}`;
+}
+
 
 function getPriorityWeight(
   priority:
@@ -172,6 +375,7 @@ function getPriorityWeight(
   }
 }
 
+
 export function sortTripTasks(
   tasks: TripTask[]
 ) {
@@ -179,6 +383,7 @@ export function sortTripTasks(
     ...tasks,
   ].sort(
     (a, b) => {
+      // Open tasks always appear before completed tasks.
       if (
         a.status !==
         b.status
@@ -189,10 +394,12 @@ export function sortTripTasks(
           : 1;
       }
 
+
       if (
         a.status ===
         "open"
       ) {
+        // Earlier deadlines appear first.
         if (
           a.due_date &&
           b.due_date
@@ -201,6 +408,7 @@ export function sortTripTasks(
             a.due_date.localeCompare(
               b.due_date
             );
+
 
           if (
             dateOrder !==
@@ -218,6 +426,8 @@ export function sortTripTasks(
           return 1;
         }
 
+
+        // Higher priority wins when deadlines match.
         const priorityOrder =
           getPriorityWeight(
             a.priority
@@ -226,6 +436,7 @@ export function sortTripTasks(
             b.priority
           );
 
+
         if (
           priorityOrder !==
           0
@@ -233,6 +444,7 @@ export function sortTripTasks(
           return priorityOrder;
         }
       }
+
 
       return a.created_at.localeCompare(
         b.created_at

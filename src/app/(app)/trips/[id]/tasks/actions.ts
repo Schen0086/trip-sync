@@ -14,6 +14,7 @@ import {
 } from "@/lib/supabase/server";
 
 import {
+  isTaskCategory,
   isTaskPriority,
 } from "@/lib/tasks";
 
@@ -34,7 +35,9 @@ function getText(
 ) {
   return (
     (
-      formData.get(name) as
+      formData.get(
+        name
+      ) as
         | string
         | null
     )?.trim() ?? ""
@@ -56,11 +59,14 @@ function optionalText(
 
 
 function validDateInput(
-  value: string | null
+  value:
+    | string
+    | null
 ) {
   if (!value) {
     return true;
   }
+
 
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(
@@ -69,6 +75,7 @@ function validDateInput(
   ) {
     return false;
   }
+
 
   return !Number.isNaN(
     new Date(
@@ -101,11 +108,13 @@ export async function addTripTask(
   const supabase =
     await createClient();
 
+
   const {
     data,
     error,
   } =
     await supabase.auth.getClaims();
+
 
   if (
     error ||
@@ -116,8 +125,10 @@ export async function addTripTask(
     );
   }
 
+
   const userId =
     data.claims.sub;
+
 
   const tripId =
     getText(
@@ -125,11 +136,13 @@ export async function addTripTask(
       "tripId"
     );
 
+
   const title =
     getText(
       formData,
       "title"
     );
+
 
   const description =
     optionalText(
@@ -137,11 +150,20 @@ export async function addTripTask(
       "description"
     );
 
+
   const assignedTo =
     optionalText(
       formData,
       "assignedTo"
     );
+
+
+  const category =
+    getText(
+      formData,
+      "category"
+    );
+
 
   const dueDate =
     optionalText(
@@ -149,14 +171,17 @@ export async function addTripTask(
       "dueDate"
     );
 
+
   const priority =
     getText(
       formData,
       "priority"
     );
 
+
   const errorPath =
     `/trips/${tripId}/tasks`;
+
 
   if (
     !tripId ||
@@ -171,6 +196,7 @@ export async function addTripTask(
     );
   }
 
+
   if (
     description &&
     description.length >
@@ -182,6 +208,20 @@ export async function addTripTask(
       )}`
     );
   }
+
+
+  if (
+    !isTaskCategory(
+      category
+    )
+  ) {
+    replaceRedirect(
+      `${errorPath}?error=${encodeURIComponent(
+        "Choose a valid task category"
+      )}`
+    );
+  }
+
 
   if (
     !isTaskPriority(
@@ -195,6 +235,7 @@ export async function addTripTask(
     );
   }
 
+
   if (
     !validDateInput(
       dueDate
@@ -207,10 +248,14 @@ export async function addTripTask(
     );
   }
 
+
   const {
-    error: insertError,
+    error:
+      insertError,
   } = await supabase
-    .from("trip_tasks")
+    .from(
+      "trip_tasks"
+    )
     .insert({
       trip_id:
         tripId,
@@ -225,6 +270,8 @@ export async function addTripTask(
 
       description,
 
+      category,
+
       due_date:
         dueDate,
 
@@ -234,11 +281,15 @@ export async function addTripTask(
         "open",
     });
 
-  if (insertError) {
+
+  if (
+    insertError
+  ) {
     console.error(
       "Failed to add trip task:",
       insertError
     );
+
 
     replaceRedirect(
       `${errorPath}?error=${encodeURIComponent(
@@ -247,9 +298,11 @@ export async function addTripTask(
     );
   }
 
+
   refreshTasks(
     tripId
   );
+
 
   replaceRedirect(
     `${errorPath}?success=${encodeURIComponent(
@@ -265,11 +318,13 @@ export async function updateTripTask(
   const supabase =
     await createClient();
 
+
   const {
     data,
     error,
   } =
     await supabase.auth.getClaims();
+
 
   if (
     error ||
@@ -280,11 +335,13 @@ export async function updateTripTask(
     );
   }
 
+
   const tripId =
     getText(
       formData,
       "tripId"
     );
+
 
   const taskId =
     getText(
@@ -292,11 +349,13 @@ export async function updateTripTask(
       "taskId"
     );
 
+
   const title =
     getText(
       formData,
       "title"
     );
+
 
   const description =
     optionalText(
@@ -304,11 +363,20 @@ export async function updateTripTask(
       "description"
     );
 
+
   const assignedTo =
     optionalText(
       formData,
       "assignedTo"
     );
+
+
+  const category =
+    getText(
+      formData,
+      "category"
+    );
+
 
   const dueDate =
     optionalText(
@@ -316,14 +384,17 @@ export async function updateTripTask(
       "dueDate"
     );
 
+
   const priority =
     getText(
       formData,
       "priority"
     );
 
+
   const errorPath =
     `/trips/${tripId}/tasks`;
+
 
   if (
     !taskId ||
@@ -338,6 +409,7 @@ export async function updateTripTask(
     );
   }
 
+
   if (
     description &&
     description.length >
@@ -349,6 +421,20 @@ export async function updateTripTask(
       )}`
     );
   }
+
+
+  if (
+    !isTaskCategory(
+      category
+    )
+  ) {
+    replaceRedirect(
+      `${errorPath}?error=${encodeURIComponent(
+        "Choose a valid task category"
+      )}`
+    );
+  }
+
 
   if (
     !isTaskPriority(
@@ -362,6 +448,7 @@ export async function updateTripTask(
     );
   }
 
+
   if (
     !validDateInput(
       dueDate
@@ -374,11 +461,16 @@ export async function updateTripTask(
     );
   }
 
+
   const {
-    data: updated,
-    error: updateError,
+    data:
+      updated,
+    error:
+      updateError,
   } = await supabase
-    .from("trip_tasks")
+    .from(
+      "trip_tasks"
+    )
     .update({
       title,
 
@@ -386,6 +478,8 @@ export async function updateTripTask(
 
       assigned_to:
         assignedTo,
+
+      category,
 
       due_date:
         dueDate,
@@ -400,8 +494,11 @@ export async function updateTripTask(
       "trip_id",
       tripId
     )
-    .select("id")
+    .select(
+      "id"
+    )
     .maybeSingle();
+
 
   if (
     updateError ||
@@ -412,6 +509,7 @@ export async function updateTripTask(
       updateError
     );
 
+
     replaceRedirect(
       `${errorPath}?error=${encodeURIComponent(
         updateError?.message ??
@@ -420,9 +518,11 @@ export async function updateTripTask(
     );
   }
 
+
   refreshTasks(
     tripId
   );
+
 
   replaceRedirect(
     `${errorPath}?success=${encodeURIComponent(
@@ -438,11 +538,13 @@ export async function toggleTripTask(
   const supabase =
     await createClient();
 
+
   const {
     data,
     error,
   } =
     await supabase.auth.getClaims();
+
 
   if (
     error ||
@@ -453,11 +555,13 @@ export async function toggleTripTask(
     );
   }
 
+
   const tripId =
     getText(
       formData,
       "tripId"
     );
+
 
   const taskId =
     getText(
@@ -465,10 +569,14 @@ export async function toggleTripTask(
       "taskId"
     );
 
+
   const {
-    data: task,
+    data:
+      task,
   } = await supabase
-    .from("trip_tasks")
+    .from(
+      "trip_tasks"
+    )
     .select(`
       id,
       status
@@ -483,23 +591,30 @@ export async function toggleTripTask(
     )
     .maybeSingle();
 
+
   if (!task) {
     replaceRedirect(
       `/trips/${tripId}/tasks`
     );
   }
 
+
   const nextStatus =
     task.status ===
-    "completed"
+      "completed"
       ? "open"
       : "completed";
 
+
   const {
-    data: updated,
-    error: updateError,
+    data:
+      updated,
+    error:
+      updateError,
   } = await supabase
-    .from("trip_tasks")
+    .from(
+      "trip_tasks"
+    )
     .update({
       status:
         nextStatus,
@@ -508,8 +623,11 @@ export async function toggleTripTask(
       "id",
       task.id
     )
-    .select("id")
+    .select(
+      "id"
+    )
     .maybeSingle();
+
 
   if (
     updateError ||
@@ -520,6 +638,7 @@ export async function toggleTripTask(
       updateError
     );
 
+
     replaceRedirect(
       `/trips/${tripId}/tasks?error=${encodeURIComponent(
         updateError?.message ??
@@ -527,6 +646,7 @@ export async function toggleTripTask(
       )}`
     );
   }
+
 
   refreshTasks(
     tripId
@@ -540,11 +660,13 @@ export async function claimTripTask(
   const supabase =
     await createClient();
 
+
   const {
     data,
     error,
   } =
     await supabase.auth.getClaims();
+
 
   if (
     error ||
@@ -555,8 +677,10 @@ export async function claimTripTask(
     );
   }
 
+
   const userId =
     data.claims.sub;
+
 
   const tripId =
     getText(
@@ -564,17 +688,23 @@ export async function claimTripTask(
       "tripId"
     );
 
+
   const taskId =
     getText(
       formData,
       "taskId"
     );
 
+
   const {
-    data: claimed,
-    error: claimError,
+    data:
+      claimed,
+    error:
+      claimError,
   } = await supabase
-    .from("trip_tasks")
+    .from(
+      "trip_tasks"
+    )
     .update({
       assigned_to:
         userId,
@@ -595,8 +725,11 @@ export async function claimTripTask(
       "status",
       "open"
     )
-    .select("id")
+    .select(
+      "id"
+    )
     .maybeSingle();
+
 
   if (
     claimError ||
@@ -607,6 +740,7 @@ export async function claimTripTask(
       claimError
     );
 
+
     replaceRedirect(
       `/trips/${tripId}/tasks?error=${encodeURIComponent(
         claimError?.message ??
@@ -614,6 +748,7 @@ export async function claimTripTask(
       )}`
     );
   }
+
 
   refreshTasks(
     tripId
@@ -627,11 +762,13 @@ export async function releaseTripTask(
   const supabase =
     await createClient();
 
+
   const {
     data,
     error,
   } =
     await supabase.auth.getClaims();
+
 
   if (
     error ||
@@ -642,8 +779,10 @@ export async function releaseTripTask(
     );
   }
 
+
   const userId =
     data.claims.sub;
+
 
   const tripId =
     getText(
@@ -651,17 +790,23 @@ export async function releaseTripTask(
       "tripId"
     );
 
+
   const taskId =
     getText(
       formData,
       "taskId"
     );
 
+
   const {
-    data: released,
-    error: releaseError,
+    data:
+      released,
+    error:
+      releaseError,
   } = await supabase
-    .from("trip_tasks")
+    .from(
+      "trip_tasks"
+    )
     .update({
       assigned_to:
         null,
@@ -678,8 +823,11 @@ export async function releaseTripTask(
       "assigned_to",
       userId
     )
-    .select("id")
+    .select(
+      "id"
+    )
     .maybeSingle();
+
 
   if (
     releaseError ||
@@ -690,6 +838,7 @@ export async function releaseTripTask(
       releaseError
     );
 
+
     replaceRedirect(
       `/trips/${tripId}/tasks?error=${encodeURIComponent(
         releaseError?.message ??
@@ -697,6 +846,7 @@ export async function releaseTripTask(
       )}`
     );
   }
+
 
   refreshTasks(
     tripId
@@ -710,11 +860,13 @@ export async function deleteTripTask(
   const supabase =
     await createClient();
 
+
   const {
     data,
     error,
   } =
     await supabase.auth.getClaims();
+
 
   if (
     error ||
@@ -725,11 +877,13 @@ export async function deleteTripTask(
     );
   }
 
+
   const tripId =
     getText(
       formData,
       "tripId"
     );
+
 
   const taskId =
     getText(
@@ -737,13 +891,18 @@ export async function deleteTripTask(
       "taskId"
     );
 
+
   const errorPath =
     `/trips/${tripId}/tasks`;
 
+
   const {
-    error: deleteError,
+    error:
+      deleteError,
   } = await supabase
-    .from("trip_tasks")
+    .from(
+      "trip_tasks"
+    )
     .delete()
     .eq(
       "id",
@@ -754,11 +913,15 @@ export async function deleteTripTask(
       tripId
     );
 
-  if (deleteError) {
+
+  if (
+    deleteError
+  ) {
     console.error(
       "Failed to delete trip task:",
       deleteError
     );
+
 
     replaceRedirect(
       `${errorPath}?error=${encodeURIComponent(
@@ -767,9 +930,11 @@ export async function deleteTripTask(
     );
   }
 
+
   refreshTasks(
     tripId
   );
+
 
   replaceRedirect(
     `${errorPath}?success=${encodeURIComponent(

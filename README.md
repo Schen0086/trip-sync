@@ -17,7 +17,7 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Live weather forecasts for upcoming trips
 - Shared expense tracking and settlements
 - Personal, required, and shared packing lists
-- Tasks and responsibilities with assignments, priorities, and due dates
+- Tasks and responsibilities with categories, assignments, priorities, due dates, progress tracking, and filtering
 - Personalised dashboard highlighting items that need attention
 - Intelligent trip overviews with planning progress, upcoming events, personal action items, and expense balances
 - Trip activity feeds for collaborative changes
