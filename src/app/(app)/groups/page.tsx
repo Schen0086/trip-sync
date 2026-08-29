@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
-
 import BackButton from "@/components/back-button";
+import GroupAvatar from "@/components/group-avatar";
+
+import { createClient } from "@/lib/supabase/server";
 
 import {
   createGroup,
   joinGroupByCode,
 } from "./actions";
-
 
 type GroupsPageProps = {
   searchParams: Promise<{
@@ -18,16 +18,90 @@ type GroupsPageProps = {
   }>;
 };
 
-
 type GroupData = {
   id: string;
   name: string;
   description: string | null;
   created_at: string;
   status: string;
+  avatar_path: string | null;
   role: string;
 };
 
+type GroupCardProps = {
+  group: GroupData;
+  avatarUrl: string | null;
+  owned: boolean;
+};
+
+function getRoleBadgeClass(
+  role: string
+) {
+  if (role === "owner") {
+    return "bg-brand-50 text-brand-700";
+  }
+
+  if (role === "admin") {
+    return "border border-line bg-surface-soft text-ink";
+  }
+
+  return "border border-line bg-surface-soft text-muted";
+}
+
+function GroupCard({
+  group,
+  avatarUrl,
+  owned,
+}: GroupCardProps) {
+  return (
+    <Link
+      href={`/groups/${group.id}`}
+      className="rounded-2xl border border-line bg-surface p-6 transition hover:border-brand-500 hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
+    >
+      <div className="flex items-start gap-4">
+        <GroupAvatar
+          src={avatarUrl}
+          groupName={group.name}
+          size="md"
+        />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap gap-2">
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium capitalize ${getRoleBadgeClass(
+                group.role
+              )}`}
+            >
+              {group.role}
+            </span>
+
+            {group.status ===
+              "closed" && (
+              <span className="inline-flex rounded-full border border-line bg-surface-soft px-2.5 py-1 text-xs font-medium text-muted">
+                Closed
+              </span>
+            )}
+          </div>
+
+          <h3 className="mt-3 break-words text-lg font-semibold text-ink">
+            {group.name}
+          </h3>
+        </div>
+      </div>
+
+      <p className="mt-4 line-clamp-2 text-sm leading-6 text-muted">
+        {group.description ||
+          "No description yet."}
+      </p>
+
+      <p className="mt-6 text-sm font-medium text-brand-700">
+        {owned
+          ? "Manage group →"
+          : "View group →"}
+      </p>
+    </Link>
+  );
+}
 
 export default async function GroupsPage({
   searchParams,
@@ -38,8 +112,7 @@ export default async function GroupsPage({
   const supabase =
     await createClient();
 
-
-  // Check authentication
+  // Check authentication.
   const {
     data,
     error,
@@ -56,8 +129,7 @@ export default async function GroupsPage({
   const userId =
     data.claims.sub;
 
-
-  // Load memberships
+  // Load memberships.
   const {
     data: memberships,
   } = await supabase
@@ -70,28 +142,21 @@ export default async function GroupsPage({
         name,
         description,
         created_at,
-        status
+        status,
+        avatar_path
       )
     `)
-    .eq(
-      "user_id",
-      userId
-    )
-    .order(
-      "joined_at",
-      {
-        ascending: false,
-      }
-    );
+    .eq("user_id", userId)
+    .order("joined_at", {
+      ascending: false,
+    });
 
-
-  // Separate owned and joined groups
+  // Separate owned and joined groups.
   const ownedGroups:
     GroupData[] = [];
 
   const joinedGroups:
     GroupData[] = [];
-
 
   memberships?.forEach(
     (membership) => {
@@ -109,17 +174,25 @@ export default async function GroupsPage({
       const groupData:
         GroupData = {
         id: group.id,
+
         name: group.name,
+
         description:
           group.description,
+
         created_at:
           group.created_at,
+
         status:
           group.status,
+
+        avatar_path:
+          group.avatar_path ??
+          null,
+
         role:
           membership.role,
       };
-
 
       if (
         membership.role ===
@@ -136,15 +209,62 @@ export default async function GroupsPage({
     }
   );
 
+  // Create signed avatar URLs for groups the user belongs to.
+  const avatarUrlByGroupId =
+    new Map<
+      string,
+      string
+    >();
+
+  await Promise.all(
+    [
+      ...ownedGroups,
+      ...joinedGroups,
+    ].map(
+      async (group) => {
+        if (
+          !group.avatar_path
+        ) {
+          return;
+        }
+
+        const {
+          data: avatarData,
+          error: avatarError,
+        } = await supabase.storage
+          .from("group-avatars")
+          .createSignedUrl(
+            group.avatar_path,
+            3600
+          );
+
+        if (avatarError) {
+          console.error(
+            `Failed to load avatar for group ${group.id}:`,
+            avatarError
+          );
+
+          return;
+        }
+
+        if (
+          avatarData?.signedUrl
+        ) {
+          avatarUrlByGroupId.set(
+            group.id,
+            avatarData.signedUrl
+          );
+        }
+      }
+    )
+  );
 
   return (
     <main className="px-6 py-8">
       <div className="mx-auto max-w-6xl">
-        {/* Back navigation */}
         <BackButton
           fallbackHref="/dashboard"
         />
-
 
         {/* Page heading */}
         <header className="mt-8 border-b border-line pb-8">
@@ -153,14 +273,9 @@ export default async function GroupsPage({
           </h1>
 
           <p className="mt-2 max-w-2xl text-muted">
-            Create and manage the
-            groups you organise, join
-            groups with an invite code,
-            and see the groups you&apos;re
-            travelling with.
+            Create and manage the groups you organise, join groups with an invite code, and see the groups you&apos;re travelling with.
           </p>
         </header>
-
 
         {/* Error message */}
         {query.error && (
@@ -172,7 +287,6 @@ export default async function GroupsPage({
           </div>
         )}
 
-
         {/* Success message */}
         {query.success && (
           <div
@@ -182,7 +296,6 @@ export default async function GroupsPage({
             {query.success}
           </div>
         )}
-
 
         {/* Create or join */}
         <section className="mt-10 grid items-start gap-4 lg:grid-cols-2">
@@ -195,9 +308,7 @@ export default async function GroupsPage({
                 </h2>
 
                 <p className="mt-1 text-sm text-muted">
-                  Start a group for
-                  friends you regularly
-                  travel with.
+                  Start a group for friends you regularly travel with.
                 </p>
               </div>
 
@@ -215,7 +326,6 @@ export default async function GroupsPage({
               </svg>
             </summary>
 
-
             <form
               action={createGroup}
               className="space-y-5 border-t border-line p-6"
@@ -226,8 +336,6 @@ export default async function GroupsPage({
                 value="/groups"
               />
 
-
-              {/* Group name */}
               <div>
                 <label
                   htmlFor="new-group-name"
@@ -247,8 +355,6 @@ export default async function GroupsPage({
                 />
               </div>
 
-
-              {/* Description */}
               <div>
                 <label
                   htmlFor="new-group-description"
@@ -266,7 +372,6 @@ export default async function GroupsPage({
                 />
               </div>
 
-
               <button
                 type="submit"
                 className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
@@ -275,7 +380,6 @@ export default async function GroupsPage({
               </button>
             </form>
           </details>
-
 
           {/* Join group */}
           <details className="group/join overflow-hidden rounded-2xl border border-line bg-surface">
@@ -286,9 +390,7 @@ export default async function GroupsPage({
                 </h2>
 
                 <p className="mt-1 text-sm text-muted">
-                  Enter a group code
-                  shared with you by an
-                  owner or admin.
+                  Enter a group code shared with you by an owner or admin.
                 </p>
               </div>
 
@@ -305,7 +407,6 @@ export default async function GroupsPage({
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </summary>
-
 
             <form
               action={joinGroupByCode}
@@ -342,7 +443,6 @@ export default async function GroupsPage({
           </details>
         </section>
 
-
         {/* Owned groups */}
         <section className="mt-12">
           <div>
@@ -351,66 +451,36 @@ export default async function GroupsPage({
             </h2>
 
             <p className="mt-1 text-sm text-muted">
-              Groups you created and
-              manage.
+              Groups where you currently hold the Owner role.
             </p>
           </div>
-
 
           {ownedGroups.length ===
           0 ? (
             <div className="mt-5 rounded-2xl border border-line bg-surface p-8">
               <p className="text-sm text-muted">
-                You don&apos;t own any
-                groups yet. Create one
-                above to get started.
+                You don&apos;t own any groups yet. Create one above to get started.
               </p>
             </div>
           ) : (
             <div className="mt-5 grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
               {ownedGroups.map(
                 (group) => (
-                  <Link
+                  <GroupCard
                     key={group.id}
-                    href={`/groups/${group.id}`}
-                    className="rounded-2xl border border-line bg-surface p-6 transition hover:border-brand-500 hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
-                  >
-                    {/* Group badges */}
-                    <div className="flex flex-wrap gap-2">
-                      <span className="inline-flex rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">
-                        Owner
-                      </span>
-
-                      {group.status ===
-                        "closed" && (
-                        <span className="inline-flex rounded-full border border-line bg-surface-soft px-2.5 py-1 text-xs font-medium text-muted">
-                          Closed
-                        </span>
-                      )}
-                    </div>
-
-
-                    {/* Group details */}
-                    <h3 className="mt-4 text-lg font-semibold text-ink">
-                      {group.name}
-                    </h3>
-
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">
-                      {group.description ||
-                        "No description yet."}
-                    </p>
-
-
-                    <p className="mt-6 text-sm font-medium text-brand-700">
-                      Manage group →
-                    </p>
-                  </Link>
+                    group={group}
+                    avatarUrl={
+                      avatarUrlByGroupId.get(
+                        group.id
+                      ) ?? null
+                    }
+                    owned
+                  />
                 )
               )}
             </div>
           )}
         </section>
-
 
         {/* Joined groups */}
         <section className="mt-12">
@@ -420,59 +490,31 @@ export default async function GroupsPage({
             </h2>
 
             <p className="mt-1 text-sm text-muted">
-              Groups managed by
-              someone else.
+              Groups where you&apos;re an Admin or Member rather than the Owner.
             </p>
           </div>
-
 
           {joinedGroups.length ===
           0 ? (
             <div className="mt-5 rounded-2xl border border-line bg-surface p-8">
               <p className="text-sm text-muted">
-                You haven&apos;t joined
-                any other groups yet.
+                You haven&apos;t joined any other groups yet.
               </p>
             </div>
           ) : (
             <div className="mt-5 grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
               {joinedGroups.map(
                 (group) => (
-                  <Link
+                  <GroupCard
                     key={group.id}
-                    href={`/groups/${group.id}`}
-                    className="rounded-2xl border border-line bg-surface p-6 transition hover:border-brand-500 hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
-                  >
-                    {/* Group badges */}
-                    <div className="flex flex-wrap gap-2">
-                      <span className="inline-flex rounded-full border border-line bg-surface-soft px-2.5 py-1 text-xs font-medium capitalize text-muted">
-                        {group.role}
-                      </span>
-
-                      {group.status ===
-                        "closed" && (
-                        <span className="inline-flex rounded-full border border-line bg-surface-soft px-2.5 py-1 text-xs font-medium text-muted">
-                          Closed
-                        </span>
-                      )}
-                    </div>
-
-
-                    {/* Group details */}
-                    <h3 className="mt-4 text-lg font-semibold text-ink">
-                      {group.name}
-                    </h3>
-
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">
-                      {group.description ||
-                        "No description yet."}
-                    </p>
-
-
-                    <p className="mt-6 text-sm font-medium text-brand-700">
-                      View group →
-                    </p>
-                  </Link>
+                    group={group}
+                    avatarUrl={
+                      avatarUrlByGroupId.get(
+                        group.id
+                      ) ?? null
+                    }
+                    owned={false}
+                  />
                 )
               )}
             </div>

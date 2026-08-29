@@ -7,7 +7,8 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 ## Features
 
 - Personal and group trip planning
-- Group creation, membership, roles, and invite codes
+- Group creation, private group pictures, membership, roles, ownership transfer, and invite codes
+- Group overviews with current/upcoming trips and recent planning activity
 - Day-by-day itineraries with activities, transport, and accommodation
 - Drag-and-drop itinerary ordering and schedule conflict detection
 - Group suggestions, voting, and discussion threads
@@ -63,6 +64,8 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Persistent user theme preferences
 - Server-side authentication and route protection
 - Collaborative permission models for trips, groups, expenses, packing, voting, discussions, tasks, and notifications
+- Atomic group ownership transfer enforced through PostgreSQL functions and role-based permissions
+- Private group images delivered through signed Supabase Storage URLs with member/owner Storage policies
 - Database migrations, triggers, helper functions, and validation implemented through Supabase
 - Secure user-managed profile images using Supabase Storage and Storage RLS policies
 - Map and itinerary deep linking for location-focused trip navigation
