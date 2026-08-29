@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   formatItineraryDate,
   formatItineraryTime,
@@ -52,6 +54,29 @@ function getNightCount(
     : null;
 }
 
+function getMapHref(
+  tripId: string,
+  pointId: string,
+  day:
+    | string
+    | null
+) {
+  const dayQuery =
+    day
+      ? `&day=${encodeURIComponent(
+          day
+        )}`
+      : "";
+
+  return (
+    `/trips/${tripId}/map` +
+    `?focus=${encodeURIComponent(
+      pointId
+    )}` +
+    dayQuery
+  );
+}
+
 export default function ItineraryItemDetails({
   item,
 }: ItineraryItemDetailsProps) {
@@ -91,8 +116,75 @@ export default function ItineraryItemDetails({
       item.check_out_date
     );
 
+  const planned =
+    item.planning_status ===
+    "planned";
+
+  const activityMapHref =
+    planned &&
+    item.item_type ===
+      "activity" &&
+    item.latitude !==
+      null &&
+    item.longitude !==
+      null
+      ? getMapHref(
+          item.trip_id,
+          `activity-${item.id}`,
+          item.scheduled_date
+        )
+      : null;
+
+  const departureMapHref =
+    planned &&
+    item.item_type ===
+      "transport" &&
+    item.departure_latitude !==
+      null &&
+    item.departure_longitude !==
+      null
+      ? getMapHref(
+          item.trip_id,
+          `transport-departure-${item.id}`,
+          item.departure_date
+        )
+      : null;
+
+  const arrivalMapHref =
+    planned &&
+    item.item_type ===
+      "transport" &&
+    item.arrival_latitude !==
+      null &&
+    item.arrival_longitude !==
+      null
+      ? getMapHref(
+          item.trip_id,
+          `transport-arrival-${item.id}`,
+          item.arrival_date
+        )
+      : null;
+
+  const accommodationMapHref =
+    planned &&
+    item.item_type ===
+      "accommodation" &&
+    item.latitude !==
+      null &&
+    item.longitude !==
+      null
+      ? getMapHref(
+          item.trip_id,
+          `accommodation-${item.id}`,
+          item.check_in_date
+        )
+      : null;
+
   return (
-    <div className="mt-4 space-y-4 text-sm text-muted">
+    <div
+      id={`itinerary-item-${item.id}`}
+      className="mt-4 scroll-mt-28 space-y-4 text-sm text-muted"
+    >
       {/* Description */}
       {item.description && (
         <p className="leading-6">
@@ -107,7 +199,8 @@ export default function ItineraryItemDetails({
         "activity" && (
         <div className="space-y-3">
           {(item.location_name ||
-            item.address) && (
+            item.address ||
+            activityMapHref) && (
             <div className="rounded-xl border border-line bg-surface p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-subtle">
                 Location
@@ -127,6 +220,22 @@ export default function ItineraryItemDetails({
                     item.address
                   }
                 </p>
+              )}
+
+              {activityMapHref && (
+                <Link
+                  href={
+                    activityMapHref
+                  }
+                  className="mt-3 inline-flex items-center gap-1.5 font-medium text-brand-700 transition hover:text-brand-800"
+                >
+                  View on map
+                  <span
+                    aria-hidden="true"
+                  >
+                    →
+                  </span>
+                </Link>
               )}
             </div>
           )}
@@ -178,8 +287,7 @@ export default function ItineraryItemDetails({
               rel="noreferrer"
               className="inline-block font-medium text-brand-700 hover:text-brand-800"
             >
-              Open
-              website →
+              Open website →
             </a>
           )}
         </div>
@@ -260,6 +368,22 @@ export default function ItineraryItemDetails({
                   }
                 </p>
               )}
+
+              {departureMapHref && (
+                <Link
+                  href={
+                    departureMapHref
+                  }
+                  className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 transition hover:text-brand-800"
+                >
+                  Departure on map
+                  <span
+                    aria-hidden="true"
+                  >
+                    →
+                  </span>
+                </Link>
+              )}
             </div>
 
             {/* Direction */}
@@ -275,7 +399,6 @@ export default function ItineraryItemDetails({
                 className="h-5 w-5 rotate-90 sm:rotate-0"
               >
                 <path d="M5 12h14" />
-
                 <path d="m15 8 4 4-4 4" />
               </svg>
             </div>
@@ -318,6 +441,22 @@ export default function ItineraryItemDetails({
                   }
                 </p>
               )}
+
+              {arrivalMapHref && (
+                <Link
+                  href={
+                    arrivalMapHref
+                  }
+                  className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 transition hover:text-brand-800"
+                >
+                  Arrival on map
+                  <span
+                    aria-hidden="true"
+                  >
+                    →
+                  </span>
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -332,10 +471,11 @@ export default function ItineraryItemDetails({
             item.address ||
             item.provider ||
             nightCount !==
-              null) && (
+              null ||
+            accommodationMapHref) && (
             <div className="rounded-xl border border-line bg-surface p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-medium uppercase tracking-wide text-subtle">
                     Stay
                   </p>
@@ -358,12 +498,27 @@ export default function ItineraryItemDetails({
 
                   {item.provider && (
                     <p className="mt-2 text-xs text-subtle">
-                      Booked
-                      with{" "}
+                      Booked with{" "}
                       {
                         item.provider
                       }
                     </p>
+                  )}
+
+                  {accommodationMapHref && (
+                    <Link
+                      href={
+                        accommodationMapHref
+                      }
+                      className="mt-3 inline-flex items-center gap-1.5 font-medium text-brand-700 transition hover:text-brand-800"
+                    >
+                      View on map
+                      <span
+                        aria-hidden="true"
+                      >
+                        →
+                      </span>
+                    </Link>
                   )}
                 </div>
 
@@ -476,8 +631,7 @@ export default function ItineraryItemDetails({
               rel="noreferrer"
               className="shrink-0 font-medium text-brand-700 hover:text-brand-800"
             >
-              Open
-              booking →
+              Open booking →
             </a>
           )}
         </div>

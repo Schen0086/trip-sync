@@ -13,7 +13,8 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Group suggestions, voting, and discussion threads
 - Suggestion acceptance, rejection, and archiving
 - Saved places and location discovery
-- Interactive trip maps with filtering
+- Interactive trip maps with day, category, and planning-status filtering
+- Direct itinerary-to-map marker focusing and map-to-itinerary deep linking
 - Live weather forecasts for upcoming trips
 - Shared expense tracking and settlements
 - Personal, required, and shared packing lists

@@ -6,6 +6,7 @@ import {
 
 import BackButton from "@/components/back-button";
 import TripMap from "@/components/trip-map";
+import TripMapDeepLink from "@/components/trip-map-deep-link";
 
 import {
   createClient,
@@ -15,6 +16,7 @@ import {
   buildTripMapPoints,
   type MapItineraryItem,
   type SavedPlace,
+  type TripMapPoint,
 } from "@/lib/places";
 
 import {
@@ -25,13 +27,155 @@ type TripMapPageProps = {
   params: Promise<{
     id: string;
   }>;
+
+  searchParams: Promise<{
+    focus?: string;
+    day?: string;
+  }>;
 };
+
+function getItineraryItemIdFromPoint(
+  pointId: string
+) {
+  const prefixes = [
+    "activity-",
+    "accommodation-",
+    "transport-departure-",
+    "transport-arrival-",
+  ];
+
+  for (
+    const prefix of
+    prefixes
+  ) {
+    if (
+      pointId.startsWith(
+        prefix
+      )
+    ) {
+      return pointId.slice(
+        prefix.length
+      );
+    }
+  }
+
+  return null;
+}
+
+function getItineraryDisplayDay(
+  item: MapItineraryItem
+) {
+  if (
+    item.item_type ===
+    "activity"
+  ) {
+    return (
+      item.scheduled_date ??
+      null
+    );
+  }
+
+  if (
+    item.item_type ===
+    "transport"
+  ) {
+    return (
+      item.departure_date ??
+      item.arrival_date ??
+      null
+    );
+  }
+
+  if (
+    item.item_type ===
+    "accommodation"
+  ) {
+    return (
+      item.check_in_date ??
+      null
+    );
+  }
+
+  return null;
+}
+
+function addItineraryDeepLinks(
+  points:
+    TripMapPoint[],
+  itineraryItems:
+    MapItineraryItem[],
+  tripId: string
+) {
+  const itemById =
+    new Map(
+      itineraryItems.map(
+        (item) => [
+          item.id,
+          item,
+        ]
+      )
+    );
+
+  return points.map(
+    (point) => {
+      const itemId =
+        getItineraryItemIdFromPoint(
+          point.id
+        );
+
+      if (!itemId) {
+        return point;
+      }
+
+      const item =
+        itemById.get(
+          itemId
+        );
+
+      if (!item) {
+        return point;
+      }
+
+      const displayDay =
+        getItineraryDisplayDay(
+          item
+        );
+
+      const params =
+        new URLSearchParams();
+
+      if (displayDay) {
+        params.set(
+          "day",
+          displayDay
+        );
+      }
+
+      params.set(
+        "item",
+        item.id
+      );
+
+      return {
+        ...point,
+
+        href:
+          `/trips/${tripId}/itinerary?` +
+          params.toString(),
+      };
+    }
+  );
+}
 
 export default async function TripMapPage({
   params,
+  searchParams,
 }: TripMapPageProps) {
   const { id } =
     await params;
+
+  const query =
+    await searchParams;
 
   const supabase =
     await createClient();
@@ -139,9 +283,18 @@ export default async function TripMapPage({
     (itineraryData ??
       []) as MapItineraryItem[];
 
-  const points =
+  const basePoints =
     buildTripMapPoints(
       savedPlaces,
+      itineraryItems,
+      trip.id
+    );
+
+  // Replace generic itinerary links
+  // with links to the exact item.
+  const points =
+    addItineraryDeepLinks(
+      basePoints,
       itineraryItems,
       trip.id
     );
@@ -151,6 +304,25 @@ export default async function TripMapPage({
       trip.start_date,
       trip.end_date
     );
+
+  // Only honour valid map deep links.
+  const initialFocusPointId =
+    query.focus &&
+    points.some(
+      (point) =>
+        point.id ===
+        query.focus
+    )
+      ? query.focus
+      : null;
+
+  const initialDay =
+    query.day &&
+    tripDates.includes(
+      query.day
+    )
+      ? query.day
+      : null;
 
   const mapKey =
     process.env
@@ -202,6 +374,17 @@ export default async function TripMapPage({
           </div>
         </header>
 
+        {/* Apply itinerary deep-link filters
+            and focus once the map is ready. */}
+        <TripMapDeepLink
+          focusPointId={
+            initialFocusPointId
+          }
+          day={
+            initialDay
+          }
+        />
+
         <section className="mt-8">
           <TripMap
             apiKey={
@@ -252,7 +435,12 @@ export default async function TripMapPage({
               Day filters show
               confirmed locations
               relevant to that
-              date. Status filters
+              date. Opening the
+              map from an itinerary
+              item automatically
+              selects the relevant
+              day and focuses its
+              marker. Status filters
               let you separate
               saved ideas, places
               currently being voted

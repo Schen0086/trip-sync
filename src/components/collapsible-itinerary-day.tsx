@@ -1,7 +1,9 @@
 "use client";
 
-import type {
-  ReactNode,
+import {
+  useEffect,
+  useRef,
+  type ReactNode,
 } from "react";
 
 import {
@@ -33,8 +35,204 @@ export default function CollapsibleItineraryDay({
   hasConflict = false,
   children,
 }: CollapsibleItineraryDayProps) {
+  const sectionRef =
+    useRef<HTMLElement | null>(
+      null
+    );
+
+  const handledDeepLinkRef =
+    useRef<string | null>(
+      null
+    );
+
+  // Handle links arriving from the
+  // trip map. This deliberately waits
+  // for itinerary collapse preferences
+  // to finish restoring before trying
+  // to open and scroll to the item.
+  useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const requestedDay =
+      params.get("day");
+
+    const requestedItemId =
+      params.get("item");
+
+    if (
+      requestedDay !==
+        date ||
+      !requestedItemId
+    ) {
+      return;
+    }
+
+    const deepLinkKey =
+      `${requestedDay}:${requestedItemId}`;
+
+    if (
+      handledDeepLinkRef.current ===
+      deepLinkKey
+    ) {
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    let timeoutId:
+      | number
+      | null = null;
+
+    let attempts = 0;
+
+    const maxAttempts =
+      30;
+
+    function scheduleAttempt(
+      delay: number
+    ) {
+      timeoutId =
+        window.setTimeout(
+          tryFocusItem,
+          delay
+        );
+    }
+
+    function tryFocusItem() {
+      if (cancelled) {
+        return;
+      }
+
+      attempts += 1;
+
+      const section =
+        sectionRef.current;
+
+      const toggle =
+        section?.querySelector<HTMLButtonElement>(
+          "[data-itinerary-day-toggle]"
+        );
+
+      if (!toggle) {
+        if (
+          attempts <
+          maxAttempts
+        ) {
+          scheduleAttempt(
+            100
+          );
+        }
+
+        return;
+      }
+
+      const isOpen =
+        toggle.getAttribute(
+          "aria-expanded"
+        ) === "true";
+
+      // If the saved preference has
+      // this day collapsed, open it
+      // first. The next attempt waits
+      // for React to mount the items.
+      if (!isOpen) {
+        toggle.click();
+
+        if (
+          attempts <
+          maxAttempts
+        ) {
+          scheduleAttempt(
+            120
+          );
+        }
+
+        return;
+      }
+
+      const target =
+        document.getElementById(
+          `itinerary-item-${requestedItemId}`
+        );
+
+      if (!target) {
+        if (
+          attempts <
+          maxAttempts
+        ) {
+          scheduleAttempt(
+            100
+          );
+        }
+
+        return;
+      }
+
+      // The ID lives inside the item
+      // details. Scroll to the whole
+      // itinerary card instead of the
+      // bottom/details portion.
+      const card =
+        target.closest<HTMLElement>(
+          "article"
+        ) ?? target;
+
+      handledDeepLinkRef.current =
+        deepLinkKey;
+
+      window.requestAnimationFrame(
+        () => {
+          if (cancelled) {
+            return;
+          }
+
+          const top =
+            window.scrollY +
+            card
+              .getBoundingClientRect()
+              .top -
+            110;
+
+          window.scrollTo({
+            top: Math.max(
+              0,
+              top
+            ),
+            behavior:
+              "smooth",
+          });
+        }
+      );
+    }
+
+    // Give the parent itinerary time
+    // to restore its localStorage
+    // collapse state before acting.
+    scheduleAttempt(200);
+
+    return () => {
+      cancelled = true;
+
+      if (
+        timeoutId !==
+        null
+      ) {
+        window.clearTimeout(
+          timeoutId
+        );
+      }
+    };
+  }, [date]);
+
   return (
     <section
+      ref={
+        sectionRef
+      }
       className={`overflow-hidden rounded-2xl border bg-surface ${
         hasConflict
           ? "border-danger-border"
@@ -44,6 +242,7 @@ export default function CollapsibleItineraryDay({
       {/* Day header */}
       <button
         type="button"
+        data-itinerary-day-toggle="true"
         onClick={
           onToggle
         }
