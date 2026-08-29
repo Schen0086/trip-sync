@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import type {
+  GeoJSONSource,
   Map as MapLibreMap,
   Marker as MapLibreMarker,
 } from "maplibre-gl";
@@ -15,6 +16,13 @@ import type {
 import {
   formatTripDay,
 } from "@/lib/itinerary";
+
+import {
+  buildTransportMapRoutes,
+  buildTransportRouteGeoJson,
+  buildTransportRouteIndex,
+  transportRouteMatchesDay,
+} from "@/lib/map-routes";
 
 import {
   getMapPointCategoryLabel,
@@ -44,6 +52,12 @@ type MapLibreLibrary =
     "maplibre-gl"
   );
 
+const TRANSPORT_ROUTE_SOURCE_ID =
+  "tripsync-transport-routes";
+
+const TRANSPORT_ROUTE_LAYER_ID =
+  "tripsync-transport-route-lines";
+
 function getMapStyle(
   apiKey: string
 ) {
@@ -63,6 +77,15 @@ function getMapStyle(
       apiKey
     )}`
   );
+}
+
+function getTransportRouteColor() {
+  return document
+    .documentElement
+    .dataset.theme ===
+    "dark"
+    ? "#8fd5c1"
+    : "#326b5c";
 }
 
 function getMarkerIcon(
@@ -217,7 +240,8 @@ function MarkerLegendIcon({
     TripMapPointKind;
 }) {
   if (
-    kind === "saved"
+    kind ===
+    "saved"
   ) {
     return (
       <svg
@@ -228,6 +252,7 @@ function MarkerLegendIcon({
         className="h-4 w-4"
       >
         <path d="M12 21s6-4.4 6-11a6 6 0 1 0-12 0c0 6.6 6 11 6 11Z" />
+
         <circle
           cx="12"
           cy="10"
@@ -250,6 +275,7 @@ function MarkerLegendIcon({
         className="h-4 w-4"
       >
         <path d="M4 12h16" />
+
         <path d="m15 7 5 5-5 5" />
       </svg>
     );
@@ -268,7 +294,9 @@ function MarkerLegendIcon({
         className="h-4 w-4"
       >
         <path d="m3 11 9-7 9 7" />
+
         <path d="M5 10v10h14V10" />
+
         <path d="M9 20v-6h6v6" />
       </svg>
     );
@@ -289,6 +317,25 @@ function MarkerLegendIcon({
       />
 
       <path d="m9 12 2 2 4-5" />
+    </svg>
+  );
+}
+
+function TransportRouteLegendIcon() {
+  return (
+    <svg
+      viewBox="0 0 32 12"
+      fill="none"
+      aria-hidden="true"
+      className="h-3 w-8"
+    >
+      <path
+        d="M1 6h30"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeDasharray="5 4"
+      />
     </svg>
   );
 }
@@ -358,8 +405,8 @@ export default function TripMap({
     setCategoryFilter,
   ] =
     useState<
-      "all" |
-      MapPointCategory
+      | "all"
+      | MapPointCategory
     >("all");
 
   const [
@@ -367,9 +414,29 @@ export default function TripMap({
     setStatusFilter,
   ] =
     useState<
-      "all" |
-      PlacePlanningStatus
+      | "all"
+      | PlacePlanningStatus
     >("all");
+
+  const transportRoutes =
+    useMemo(
+      () =>
+        buildTransportMapRoutes(
+          points
+        ),
+      [points]
+    );
+
+  const transportRouteByPointId =
+    useMemo(
+      () =>
+        buildTransportRouteIndex(
+          transportRoutes
+        ),
+      [
+        transportRoutes,
+      ]
+    );
 
   // Desktop shows controls.
   // Mobile starts collapsed.
@@ -412,6 +479,29 @@ export default function TripMap({
               dayFilter !==
               "all"
             ) {
+              // Show both transport
+              // endpoints throughout
+              // the journey's date
+              // range.
+              if (
+                point.kind ===
+                "transport"
+              ) {
+                const route =
+                  transportRouteByPointId.get(
+                    point.id
+                  );
+
+                if (
+                  route
+                ) {
+                  return transportRouteMatchesDay(
+                    route,
+                    dayFilter
+                  );
+                }
+              }
+
               if (
                 !point.startDate
               ) {
@@ -440,10 +530,58 @@ export default function TripMap({
         categoryFilter,
         statusFilter,
         dayFilter,
+        transportRouteByPointId,
       ]
     );
 
-  // Create map
+  const filteredTransportRoutes =
+    useMemo(
+      () =>
+        transportRoutes.filter(
+          (route) => {
+            if (
+              categoryFilter !==
+                "all" &&
+              categoryFilter !==
+                "transport"
+            ) {
+              return false;
+            }
+
+            if (
+              statusFilter !==
+                "all" &&
+              route
+                .departure
+                .status !==
+                statusFilter
+            ) {
+              return false;
+            }
+
+            if (
+              dayFilter !==
+                "all" &&
+              !transportRouteMatchesDay(
+                route,
+                dayFilter
+              )
+            ) {
+              return false;
+            }
+
+            return true;
+          }
+        ),
+      [
+        transportRoutes,
+        categoryFilter,
+        statusFilter,
+        dayFilter,
+      ]
+    );
+
+  // Create map.
   useEffect(() => {
     if (
       !apiKey ||
@@ -525,7 +663,8 @@ export default function TripMap({
                 : 1.5,
 
             attributionControl: {
-              compact: true,
+              compact:
+                true,
             },
           });
 
@@ -651,13 +790,14 @@ export default function TripMap({
       }
     }
 
-    createMap();
+    void createMap();
 
     return () => {
       cancelled =
         true;
 
       themeObserver?.disconnect();
+
       resizeObserver?.disconnect();
 
       markersRef.current.forEach(
@@ -668,7 +808,9 @@ export default function TripMap({
       markersRef.current =
         [];
 
-      markerByPointIdRef.current.clear();
+      markerByPointIdRef
+        .current
+        .clear();
 
       mapRef.current?.remove();
 
@@ -683,7 +825,116 @@ export default function TripMap({
     points,
   ]);
 
-  // Draw markers
+  // Draw transport connection
+  // lines. They indicate the
+  // connection between endpoints,
+  // not an exact navigation path.
+  useEffect(() => {
+    const map =
+      mapRef.current;
+
+    if (
+      !map ||
+      !mapReady
+    ) {
+      return;
+    }
+
+    const geoJson =
+      buildTransportRouteGeoJson(
+        filteredTransportRoutes
+      );
+
+    const existingSource =
+      map.getSource(
+        TRANSPORT_ROUTE_SOURCE_ID
+      ) as
+        | GeoJSONSource
+        | undefined;
+
+    if (
+      existingSource
+    ) {
+      void existingSource.setData(
+        geoJson
+      );
+    } else {
+      map.addSource(
+        TRANSPORT_ROUTE_SOURCE_ID,
+        {
+          type:
+            "geojson",
+
+          data:
+            geoJson,
+        }
+      );
+    }
+
+    if (
+      !map.getLayer(
+        TRANSPORT_ROUTE_LAYER_ID
+      )
+    ) {
+      // Keep route lines beneath
+      // the map's labels.
+      const firstSymbolLayerId =
+        map
+          .getStyle()
+          .layers?.find(
+            (layer) =>
+              layer.type ===
+              "symbol"
+          )?.id;
+
+      map.addLayer(
+        {
+          id:
+            TRANSPORT_ROUTE_LAYER_ID,
+
+          type:
+            "line",
+
+          source:
+            TRANSPORT_ROUTE_SOURCE_ID,
+
+          layout: {
+            "line-cap":
+              "round",
+
+            "line-join":
+              "round",
+          },
+
+          paint: {
+            "line-color":
+              getTransportRouteColor(),
+
+            "line-width":
+              large
+                ? 3.5
+                : 3,
+
+            "line-opacity":
+              0.8,
+
+            "line-dasharray": [
+              2,
+              1.7,
+            ],
+          },
+        },
+
+        firstSymbolLayerId
+      );
+    }
+  }, [
+    filteredTransportRoutes,
+    mapReady,
+    large,
+  ]);
+
+  // Draw markers.
   useEffect(() => {
     const map =
       mapRef.current;
@@ -707,7 +958,9 @@ export default function TripMap({
     markersRef.current =
       [];
 
-    markerByPointIdRef.current.clear();
+    markerByPointIdRef
+      .current
+      .clear();
 
     if (
       filteredPoints.length ===
@@ -950,7 +1203,8 @@ export default function TripMap({
 
         const popup =
           new maplibre.Popup({
-            offset: 22,
+            offset:
+              22,
           }).setDOMContent(
             popupContent
           );
@@ -976,10 +1230,12 @@ export default function TripMap({
           marker
         );
 
-        markerByPointIdRef.current.set(
-          point.id,
-          marker
-        );
+        markerByPointIdRef
+          .current
+          .set(
+            point.id,
+            marker
+          );
 
         bounds.extend([
           point.longitude,
@@ -1001,7 +1257,8 @@ export default function TripMap({
           point.latitude,
         ],
 
-        zoom: 14,
+        zoom:
+          14,
 
         duration:
           500,
@@ -1031,8 +1288,9 @@ export default function TripMap({
     large,
   ]);
 
-  // Place cards can ask the
-  // map to focus a marker.
+  // Place cards and deep links
+  // can ask the map to focus
+  // a specific marker.
   useEffect(() => {
     function handleFocus(
       rawEvent: Event
@@ -1061,9 +1319,11 @@ export default function TripMap({
         );
 
       const marker =
-        markerByPointIdRef.current.get(
-          pointId
-        );
+        markerByPointIdRef
+          .current
+          .get(
+            pointId
+          );
 
       const map =
         mapRef.current;
@@ -1084,7 +1344,8 @@ export default function TripMap({
           point.latitude,
         ],
 
-        zoom: 15,
+        zoom:
+          15,
 
         duration:
           650,
@@ -1130,7 +1391,79 @@ export default function TripMap({
     );
   }
 
-  if (!apiKey) {
+  function fitVisibleLocations() {
+    const map =
+      mapRef.current;
+
+    const maplibre =
+      libraryRef.current;
+
+    if (
+      !map ||
+      !maplibre ||
+      filteredPoints.length ===
+        0
+    ) {
+      return;
+    }
+
+    map.resize();
+
+    if (
+      filteredPoints.length ===
+      1
+    ) {
+      const point =
+        filteredPoints[0];
+
+      map.easeTo({
+        center: [
+          point.longitude,
+          point.latitude,
+        ],
+
+        zoom:
+          14,
+
+        duration:
+          500,
+      });
+
+      return;
+    }
+
+    const bounds =
+      new maplibre.LngLatBounds();
+
+    filteredPoints.forEach(
+      (point) => {
+        bounds.extend([
+          point.longitude,
+          point.latitude,
+        ]);
+      }
+    );
+
+    map.fitBounds(
+      bounds,
+      {
+        padding:
+          large
+            ? 80
+            : 55,
+
+        maxZoom:
+          14,
+
+        duration:
+          500,
+      }
+    );
+  }
+
+  if (
+    !apiKey
+  ) {
     return (
       <div className="rounded-2xl border border-danger-border bg-danger-surface p-8 text-center">
         <p className="font-medium text-danger-text">
@@ -1394,17 +1727,44 @@ export default function TripMap({
         )}
       </div>
 
-      <p className="mb-3 text-xs text-subtle">
-        {
-          filteredPoints.length
-        }{" "}
-        {filteredPoints.length ===
-        1
-          ? "location"
-          : "locations"}{" "}
-        shown
-      </p>
+      {/* Visible map summary */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-subtle">
+          {
+            filteredPoints.length
+          }{" "}
+          {filteredPoints.length ===
+          1
+            ? "location"
+            : "locations"}{" "}
+          shown
 
+          {filteredTransportRoutes.length >
+          0
+            ? ` · ${filteredTransportRoutes.length} ${
+                filteredTransportRoutes.length ===
+                1
+                  ? "transport leg"
+                  : "transport legs"
+              }`
+            : ""}
+        </p>
+
+        {filteredPoints.length >
+          0 && (
+          <button
+            type="button"
+            onClick={
+              fitVisibleLocations
+            }
+            className="cursor-pointer rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-muted transition hover:bg-surface-hover hover:text-ink"
+          >
+            Fit visible
+          </button>
+        )}
+      </div>
+
+      {/* Map */}
       <div className="relative">
         <div
           ref={
@@ -1412,7 +1772,7 @@ export default function TripMap({
           }
           className={
             large
-              ? "h-[70vh] min-h-[500px] w-full overflow-hidden rounded-2xl border border-line"
+              ? "h-[58vh] min-h-[380px] w-full overflow-hidden rounded-2xl border border-line sm:h-[65vh] sm:min-h-[480px] lg:h-[70vh] lg:min-h-[500px]"
               : "h-[420px] w-full overflow-hidden rounded-2xl border border-line"
           }
         />
@@ -1474,7 +1834,30 @@ export default function TripMap({
           />
           Accommodation
         </span>
+
+        {transportRoutes.length >
+          0 && (
+          <span className="flex items-center gap-1.5">
+            <TransportRouteLegendIcon />
+            Transport
+            connection
+          </span>
+        )}
       </div>
+
+      {transportRoutes.length >
+        0 && (
+        <p className="mt-3 text-xs leading-5 text-subtle">
+          Dashed transport
+          lines connect the
+          saved departure and
+          arrival points. They
+          show the trip leg,
+          not an exact road,
+          rail, ferry, or
+          flight path.
+        </p>
+      )}
     </div>
   );
 }

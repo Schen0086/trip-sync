@@ -15,6 +15,7 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Saved places and location discovery
 - Interactive trip maps with day, category, and planning-status filtering
 - Direct itinerary-to-map marker focusing and map-to-itinerary deep linking
+- Transport route connections for multi-city and multi-destination trips
 - Live weather forecasts for upcoming trips
 - Shared expense tracking and settlements
 - Personal, required, and shared packing lists
@@ -64,3 +65,5 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Collaborative permission models for trips, groups, expenses, packing, voting, discussions, tasks, and notifications
 - Database migrations, triggers, helper functions, and validation implemented through Supabase
 - Secure user-managed profile images using Supabase Storage and Storage RLS policies
+- Map and itinerary deep linking for location-focused trip navigation
+- Multi-day transport visualisation for multi-destination itineraries

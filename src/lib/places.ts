@@ -102,13 +102,24 @@ export const MAP_POINT_CATEGORY_OPTIONS: {
   value: MapPointCategory;
   label: string;
 }[] = [
-  ...PLACE_CATEGORY_OPTIONS,
+  ...PLACE_CATEGORY_OPTIONS.filter(
+    (option) =>
+      option.value !==
+      "other"
+  ),
 
   {
     value:
       "transport",
     label:
       "Transport",
+  },
+
+  {
+    value:
+      "other",
+    label:
+      "Other",
   },
 ];
 
