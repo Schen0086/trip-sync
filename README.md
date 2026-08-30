@@ -2,7 +2,7 @@
 
 TripSync is a travel planning web application I designed for individuals and friend groups to organise trips in one place.
 
-It combines itinerary planning, group voting and discussions, shared expenses, packing, responsibilities, maps, weather, notifications, and real-time collaboration into a single responsive application.
+It combines itinerary planning, group voting and discussions, shared expenses, packing, responsibilities, maps, weather, shared photos, notifications, and real-time collaboration into a single responsive application.
 
 ## Features
 
@@ -17,6 +17,11 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Interactive trip maps with day, category, and planning-status filtering
 - Direct itinerary-to-map marker focusing and map-to-itinerary deep linking
 - Transport route connections for multi-city and multi-destination trips
+- Shared private trip photo galleries
+- Multi-photo uploads with native desktop and mobile device pickers
+- Mobile camera capture for adding new trip photos
+- Photo captions and associations with trip days and saved places
+- Responsive photo gallery and full-screen lightbox
 - Live weather forecasts for upcoming trips
 - Shared expense tracking and settlements
 - Personal, required, and shared packing lists
@@ -63,9 +68,11 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Responsive, mobile-first interface
 - Persistent user theme preferences
 - Server-side authentication and route protection
-- Collaborative permission models for trips, groups, expenses, packing, voting, discussions, tasks, and notifications
+- Collaborative permission models for trips, groups, expenses, packing, voting, discussions, tasks, photos, and notifications
 - Atomic group ownership transfer enforced through PostgreSQL functions and role-based permissions
 - Private group images delivered through signed Supabase Storage URLs with member/owner Storage policies
+- Private trip photo galleries delivered through temporary signed Storage URLs
+- Device-native photo selection with multi-file uploads and mobile camera capture
 - Database migrations, triggers, helper functions, and validation implemented through Supabase
 - Secure user-managed profile images using Supabase Storage and Storage RLS policies
 - Map and itinerary deep linking for location-focused trip navigation

@@ -4,7 +4,8 @@ export type ActivityCategory =
   | "voting"
   | "places"
   | "expenses"
-  | "packing";
+  | "packing"
+  | "photos";
 
 
 export type ActivityActorProfile = {
@@ -20,6 +21,7 @@ export type ActivityActorProfile = {
 
 export type TripActivityEvent = {
   id: string;
+
   trip_id: string;
 
   actor_user_id:
@@ -34,6 +36,7 @@ export type TripActivityEvent = {
     ActivityCategory;
 
   event_type: string;
+
   entity_type: string;
 
   entity_id:
@@ -41,6 +44,7 @@ export type TripActivityEvent = {
     | null;
 
   action: string;
+
   subject: string;
 
   detail:
@@ -75,6 +79,7 @@ export type NotificationRecord = {
   type: string;
 
   title: string;
+
   message: string;
 
   href:
@@ -120,7 +125,8 @@ export function normalizeActivityActorProfile(
 
 
 export function getActivityCategoryLabel(
-  category: ActivityCategory
+  category:
+    ActivityCategory
 ) {
   switch (category) {
     case "tasks":
@@ -140,6 +146,9 @@ export function getActivityCategoryLabel(
 
     case "packing":
       return "Packing";
+
+    case "photos":
+      return "Photos";
   }
 }
 
@@ -152,12 +161,23 @@ export function formatActivityTimestamp(
   ).toLocaleString(
     "en-IE",
     {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "UTC",
+      day:
+        "numeric",
+
+      month:
+        "short",
+
+      year:
+        "numeric",
+
+      hour:
+        "2-digit",
+
+      minute:
+        "2-digit",
+
+      timeZone:
+        "UTC",
     }
   );
 }
@@ -171,11 +191,20 @@ export function formatActivityDay(
   ).toLocaleDateString(
     "en-IE",
     {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
+      weekday:
+        "long",
+
+      day:
+        "numeric",
+
+      month:
+        "long",
+
+      year:
+        "numeric",
+
+      timeZone:
+        "UTC",
     }
   );
 }

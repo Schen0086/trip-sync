@@ -80,6 +80,13 @@ export default function TripNavigation({
         `${basePath}/map`,
     },
 
+    {
+      key: "photos",
+      label: "Photos",
+      href:
+        `${basePath}/photos`,
+    },
+
     ...(tripType ===
     "group"
       ? [
@@ -146,6 +153,14 @@ export default function TripNavigation({
       )
     ) {
       return "map";
+    }
+
+    if (
+      pathname.startsWith(
+        `${basePath}/photos`
+      )
+    ) {
+      return "photos";
     }
 
     if (
