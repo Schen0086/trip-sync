@@ -38,6 +38,11 @@ type TripPhotoGalleryProps = {
   isTripCreator: boolean;
 };
 
+const FILTER_ALL =
+  "all";
+
+const FILTER_NONE =
+  "none";
 
 function getFileExtension(
   photo: TripPhotoRecord,
@@ -160,13 +165,17 @@ export default function TripPhotoGallery({
     dayFilter,
     setDayFilter,
   ] =
-    useState("all");
+    useState(
+      FILTER_ALL
+    );
 
   const [
     placeFilter,
     setPlaceFilter,
   ] =
-    useState("all");
+    useState(
+      FILTER_ALL
+    );
 
 
   // Lightbox selection.
@@ -282,18 +291,41 @@ export default function TripPhotoGallery({
       () =>
         photos.filter(
           (photo) => {
+            // Day filter.
             if (
+              dayFilter ===
+              FILTER_NONE
+            ) {
+              if (
+                photo.photoDate !==
+                null
+              ) {
+                return false;
+              }
+            } else if (
               dayFilter !==
-                "all" &&
+                FILTER_ALL &&
               photo.photoDate !==
                 dayFilter
             ) {
               return false;
             }
 
+
+            // Place filter.
             if (
+              placeFilter ===
+              FILTER_NONE
+            ) {
+              if (
+                photo.savedPlaceId !==
+                null
+              ) {
+                return false;
+              }
+            } else if (
               placeFilter !==
-                "all" &&
+                FILTER_ALL &&
               photo.savedPlaceId !==
                 placeFilter
             ) {
@@ -564,11 +596,11 @@ export default function TripPhotoGallery({
 
   function clearFilters() {
     setDayFilter(
-      "all"
+      FILTER_ALL
     );
 
     setPlaceFilter(
-      "all"
+      FILTER_ALL
     );
   }
 
@@ -731,6 +763,75 @@ export default function TripPhotoGallery({
     );
   }
 
+  function downloadPhotoArchive(
+    photosToSave:
+      TripPhotoRecord[]
+  ) {
+    if (
+      photosToSave.length <
+        2
+    ) {
+      return;
+    }
+
+
+    const tripId =
+      photosToSave[0]
+        ?.tripId;
+
+
+    if (!tripId) {
+      throw new Error(
+        "Trip information is unavailable."
+      );
+    }
+
+
+    const downloadUrl =
+      new URL(
+        `/api/trips/${tripId}/photos/download`,
+        window.location.origin
+      );
+
+
+    photosToSave.forEach(
+      (photo) => {
+        downloadUrl
+          .searchParams
+          .append(
+            "id",
+            photo.id
+          );
+      }
+    );
+
+
+    // One browser download is substantially safer
+    // on iOS than firing several full-resolution
+    // downloads or sharing several Files together.
+    const anchor =
+      document.createElement(
+        "a"
+      );
+
+    anchor.href =
+      downloadUrl.toString();
+
+    anchor.download =
+      "TripSync-photos.zip";
+
+    anchor.style.display =
+      "none";
+
+
+    document.body.appendChild(
+      anchor
+    );
+
+    anchor.click();
+
+    anchor.remove();
+  }
 
   /**
    * Save one or more photos.
@@ -753,6 +854,7 @@ export default function TripPhotoGallery({
       return;
     }
 
+
     setBulkBusy(
       true
     );
@@ -765,42 +867,49 @@ export default function TripPhotoGallery({
       null
     );
 
+
     try {
-      const availablePhotos =
-        photosToSave.filter(
-          (photo) =>
-            Boolean(
-              photo.imageUrl
-            )
+      // Multiple photos are downloaded as one
+      // archive. This avoids mobile Safari
+      // handling many large image Files at once.
+      if (
+        photosToSave.length >
+        1
+      ) {
+        downloadPhotoArchive(
+          photosToSave
         );
 
+        setGalleryMessage(
+          `${photosToSave.length} photos are being prepared for download.`
+        );
+
+        return;
+      }
+
+
+      // Preserve the existing successful
+      // single-photo save/share experience.
+      const photo =
+        photosToSave[0];
+
+
       if (
-        availablePhotos.length ===
-        0
+        !photo.imageUrl
       ) {
         throw new Error(
-          "The selected photos are currently unavailable."
+          "The selected photo is currently unavailable."
         );
       }
 
 
-      const files =
-        await Promise.all(
-          availablePhotos.map(
-            (
-              photo,
-              index
-            ) =>
-              fetchPhotoFile(
-                photo,
-                index
-              )
-          )
+      const file =
+        await fetchPhotoFile(
+          photo,
+          0
         );
 
 
-      // Prefer the device-native share/save
-      // interface when files can be shared.
       if (
         typeof navigator !==
           "undefined" &&
@@ -809,30 +918,31 @@ export default function TripPhotoGallery({
         typeof navigator.share ===
           "function" &&
         navigator.canShare({
-          files,
+          files: [
+            file,
+          ],
         })
       ) {
         try {
           await navigator.share({
-            files,
+            files: [
+              file,
+            ],
 
             title:
-              files.length ===
-                1
-                ? "TripSync photo"
-                : "TripSync photos",
+              "TripSync photo",
           });
 
+
           setGalleryMessage(
-            files.length ===
-              1
-              ? "Photo ready to save or share."
-              : `${files.length} photos ready to save or share.`
+            "Photo ready to save or share."
           );
 
           return;
-        } catch (shareError) {
-          // Cancelling the native share sheet
+        } catch (
+          shareError
+        ) {
+          // Closing the native share sheet
           // is not an application error.
           if (
             shareError instanceof
@@ -843,6 +953,7 @@ export default function TripPhotoGallery({
             return;
           }
 
+
           console.error(
             "Native photo sharing failed:",
             shareError
@@ -851,35 +962,21 @@ export default function TripPhotoGallery({
       }
 
 
-      // Desktop and unsupported-browser fallback.
-      files.forEach(
-        (
-          file,
-          index
-        ) => {
-          window.setTimeout(
-            () => {
-              triggerDownload(
-                file,
-                file.name
-              );
-            },
-            index * 150
-          );
-        }
+      triggerDownload(
+        file,
+        file.name
       );
 
+
       setGalleryMessage(
-        files.length ===
-          1
-          ? "Photo download started."
-          : `${files.length} photo downloads started.`
+        "Photo download started."
       );
     } catch (error) {
       console.error(
         "Failed to save trip photos:",
         error
       );
+
 
       setGalleryError(
         error instanceof Error
@@ -1373,11 +1470,19 @@ export default function TripPhotoGallery({
                   }
                   className="w-full rounded-xl border border-line bg-surface-soft px-3 py-2 text-sm text-ink"
                 >
-                  <option value="all">
+                  <option
+                    value={
+                      FILTER_ALL
+                    }
+                  >
                     All days
                   </option>
 
-                  <option value="">
+                  <option
+                    value={
+                      FILTER_NONE
+                    }
+                  >
                     No day
                   </option>
 
@@ -1423,11 +1528,19 @@ export default function TripPhotoGallery({
                   }
                   className="w-full rounded-xl border border-line bg-surface-soft px-3 py-2 text-sm text-ink"
                 >
-                  <option value="all">
+                  <option
+                    value={
+                      FILTER_ALL
+                    }
+                  >
                     All places
                   </option>
 
-                  <option value="">
+                  <option
+                    value={
+                      FILTER_NONE
+                    }
+                  >
                     No place
                   </option>
 
