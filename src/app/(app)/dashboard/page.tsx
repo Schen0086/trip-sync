@@ -31,6 +31,12 @@ import {
 type DashboardPageProps = {
   searchParams: Promise<{
     success?: string;
+
+    q?: string;
+
+    type?: string;
+
+    lifecycle?: string;
   }>;
 };
 
@@ -1273,7 +1279,122 @@ export default async function DashboardPage({
     );
 
 
-  // Organise trip sections
+  // -------------------------------------------------------
+  // TRIP SEARCH AND FILTERS
+  // -------------------------------------------------------
+
+  const tripSearch =
+    query.q
+      ?.trim() ??
+    "";
+
+
+  const tripTypeFilter =
+    query.type ===
+      "personal" ||
+    query.type ===
+      "group"
+      ? query.type
+      : "all";
+
+
+  const lifecycleFilter:
+    | TripLifecycle
+    | "all" =
+    query.lifecycle ===
+      "ongoing" ||
+    query.lifecycle ===
+      "upcoming" ||
+    query.lifecycle ===
+      "past" ||
+    query.lifecycle ===
+      "cancelled"
+      ? query.lifecycle
+      : "all";
+
+
+  const normalizedTripSearch =
+    tripSearch
+      .toLocaleLowerCase();
+
+
+  const filteredTrips =
+    trips.filter(
+      (trip) => {
+        const group =
+          Array.isArray(
+            trip.groups
+          )
+            ? trip.groups[0]
+            : trip.groups;
+
+
+        const lifecycle =
+          getTripLifecycle(
+            trip.status,
+            trip.start_date,
+            trip.end_date
+          );
+
+
+        const matchesSearch =
+          normalizedTripSearch.length ===
+            0 ||
+          trip.name
+            .toLocaleLowerCase()
+            .includes(
+              normalizedTripSearch
+            ) ||
+          trip.destination
+            .toLocaleLowerCase()
+            .includes(
+              normalizedTripSearch
+            ) ||
+          (
+            group?.name ??
+            ""
+          )
+            .toLocaleLowerCase()
+            .includes(
+              normalizedTripSearch
+            );
+
+
+        const matchesType =
+          tripTypeFilter ===
+            "all" ||
+          trip.trip_type ===
+            tripTypeFilter;
+
+
+        const matchesLifecycle =
+          lifecycleFilter ===
+            "all" ||
+          lifecycle ===
+            lifecycleFilter;
+
+
+        return (
+          matchesSearch &&
+          matchesType &&
+          matchesLifecycle
+        );
+      }
+    );
+
+
+  const hasTripFilters =
+    Boolean(
+      tripSearch
+    ) ||
+    tripTypeFilter !==
+      "all" ||
+    lifecycleFilter !==
+      "all";
+
+
+  // Organise the filtered results into the
+  // existing lifecycle sections.
   const tripSections: Record<
     TripLifecycle,
     DashboardTrip[]
@@ -1284,7 +1405,8 @@ export default async function DashboardPage({
     cancelled: [],
   };
 
-  trips.forEach(
+
+  filteredTrips.forEach(
     (trip) => {
       const lifecycle =
         getTripLifecycle(
@@ -1356,7 +1478,10 @@ export default async function DashboardPage({
         )}
 
         {/* Trips */}
-        <section className="mt-10">
+        <section
+          id="trips"
+          className="mt-10"
+        >
           <div className="flex flex-col gap-5 border-b border-line pb-8 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-ink">
@@ -1387,6 +1512,184 @@ export default async function DashboardPage({
             </div>
           </div>
 
+          {trips.length >
+            0 && (
+            <form
+              method="get"
+              action="/dashboard"
+              className="mt-6 rounded-2xl border border-line bg-surface p-5 sm:p-6"
+            >
+              <div>
+                <h3 className="font-semibold text-ink">
+                  Find a trip
+                </h3>
+
+                <p className="mt-1 text-sm text-muted">
+                  Search by trip, destination or group and narrow the results.
+                </p>
+              </div>
+
+
+              <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_190px]">
+                {/* Search */}
+                <div>
+                  <label
+                    htmlFor="trip-search"
+                    className="sr-only"
+                  >
+                    Search trips
+                  </label>
+
+                  <div className="relative">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle"
+                    >
+                      <circle
+                        cx="11"
+                        cy="11"
+                        r="7"
+                      />
+
+                      <path d="m20 20-3.5-3.5" />
+                    </svg>
+
+                    <input
+                      id="trip-search"
+                      type="search"
+                      name="q"
+                      defaultValue={
+                        tripSearch
+                      }
+                      placeholder="Search trips..."
+                      className="w-full rounded-xl border border-line bg-surface-soft py-2.5 pl-10 pr-3.5 text-sm text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+                    />
+                  </div>
+                </div>
+
+
+                {/* Trip type */}
+                <div>
+                  <label
+                    htmlFor="trip-type-filter"
+                    className="sr-only"
+                  >
+                    Trip type
+                  </label>
+
+                  <select
+                    id="trip-type-filter"
+                    name="type"
+                    defaultValue={
+                      tripTypeFilter
+                    }
+                    className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+                  >
+                    <option value="all">
+                      All trip types
+                    </option>
+
+                    <option value="personal">
+                      Personal
+                    </option>
+
+                    <option value="group">
+                      Group
+                    </option>
+                  </select>
+                </div>
+
+
+                {/* Lifecycle */}
+                <div>
+                  <label
+                    htmlFor="trip-lifecycle-filter"
+                    className="sr-only"
+                  >
+                    Trip status
+                  </label>
+
+                  <select
+                    id="trip-lifecycle-filter"
+                    name="lifecycle"
+                    defaultValue={
+                      lifecycleFilter
+                    }
+                    className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+                  >
+                    <option value="all">
+                      All statuses
+                    </option>
+
+                    <option value="ongoing">
+                      In progress
+                    </option>
+
+                    <option value="upcoming">
+                      Upcoming
+                    </option>
+
+                    <option value="past">
+                      Past
+                    </option>
+
+                    <option value="cancelled">
+                      Cancelled
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+
+              <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p
+                  aria-live="polite"
+                  className="text-sm text-muted"
+                >
+                  Showing{" "}
+                  <span className="font-medium text-ink">
+                    {
+                      filteredTrips.length
+                    }
+                  </span>{" "}
+                  of{" "}
+                  {
+                    trips.length
+                  }{" "}
+                  {trips.length ===
+                  1
+                    ? "trip"
+                    : "trips"}
+                </p>
+
+
+                <div className="flex flex-wrap gap-2">
+                  {hasTripFilters && (
+                    <Link
+                      href="/dashboard#trips"
+                      className="rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-muted transition hover:bg-surface-hover hover:text-ink"
+                    >
+                      Clear
+                    </Link>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+
           {trips.length ===
           0 ? (
             <div className="mt-6 rounded-2xl border border-line bg-surface p-8">
@@ -1414,6 +1717,24 @@ export default async function DashboardPage({
                   first trip
                 </Link>
               </div>
+            </div>
+          ) : filteredTrips.length ===
+          0 ? (
+            <div className="mt-8 rounded-2xl border border-dashed border-line bg-surface p-10 text-center">
+              <h3 className="font-semibold text-ink">
+                No trips found
+              </h3>
+
+              <p className="mt-2 text-sm text-muted">
+                Try changing your search or filters.
+              </p>
+
+              <Link
+                href="/dashboard#trips"
+                className="mt-5 inline-flex rounded-xl border border-line bg-surface-soft px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-hover"
+              >
+                Clear filters
+              </Link>
             </div>
           ) : (
             <>

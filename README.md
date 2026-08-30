@@ -7,6 +7,7 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 ## Features
 
 - Personal and group trip planning
+- Search and filtering across trips and travel groups
 - Group creation, private group pictures, membership, roles, ownership transfer, and invite codes
 - Group overviews with current/upcoming trips and recent planning activity
 - Day-by-day itineraries with activities, transport, and accommodation
@@ -31,7 +32,7 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Personalised dashboard highlighting items that need attention
 - Intelligent trip overviews with planning progress, upcoming events, personal action items, and expense balances
 - Trip activity feeds for collaborative changes
-- Personal notifications with unread tracking and management
+- Personal notifications with unread tracking, management, and contextual navigation
 - User profile pictures with device-native image selection and avatar fallbacks
 - Real-time collaborative updates
 - Responsive desktop and mobile layouts
@@ -68,6 +69,7 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Real-time updates across shared trip data
 - Event-driven activity and notification system using PostgreSQL triggers
 - Responsive, mobile-first interface
+- URL-backed trip and group searching and filtering
 - Persistent user theme preferences
 - Server-side authentication and route protection
 - Collaborative permission models for trips, groups, expenses, packing, voting, discussions, tasks, photos, and notifications
