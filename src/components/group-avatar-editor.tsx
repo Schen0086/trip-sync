@@ -14,18 +14,32 @@ import {
 import GroupAvatar from "@/components/group-avatar";
 
 import {
+  createBrowserUuid,
+} from "@/lib/browser-uuid";
+
+import {
   createClient,
 } from "@/lib/supabase/client";
 
+
 type GroupAvatarEditorProps = {
   groupId: string;
+
   groupName: string;
-  initialAvatarPath: string | null;
-  initialAvatarUrl: string | null;
+
+  initialAvatarPath:
+    | string
+    | null;
+
+  initialAvatarUrl:
+    | string
+    | null;
 };
+
 
 const MAX_FILE_SIZE =
   5 * 1024 * 1024;
+
 
 const ALLOWED_TYPES =
   new Set([
@@ -33,6 +47,7 @@ const ALLOWED_TYPES =
     "image/png",
     "image/webp",
   ]);
+
 
 function getExtension(
   mimeType: string
@@ -49,56 +64,98 @@ function getExtension(
   }
 }
 
+
+function getErrorMessage(
+  error: unknown,
+  fallback: string
+) {
+  if (
+    error instanceof Error &&
+    error.message
+  ) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+
 export default function GroupAvatarEditor({
   groupId,
   groupName,
   initialAvatarPath,
   initialAvatarUrl,
 }: GroupAvatarEditorProps) {
-  const router = useRouter();
-  const supabase = createClient();
+  const router =
+    useRouter();
+
+  const supabase =
+    createClient();
 
   const inputRef =
-    useRef<HTMLInputElement>(null);
+    useRef<HTMLInputElement>(
+      null
+    );
+
 
   const [
     avatarPath,
     setAvatarPath,
-  ] = useState<string | null>(
+  ] = useState<
+    string | null
+  >(
     initialAvatarPath
   );
+
 
   const [
     avatarUrl,
     setAvatarUrl,
-  ] = useState<string | null>(
+  ] = useState<
+    string | null
+  >(
     initialAvatarUrl
   );
+
 
   const [
     selectedFile,
     setSelectedFile,
-  ] = useState<File | null>(null);
+  ] = useState<
+    File | null
+  >(null);
+
 
   const [
     previewUrl,
     setPreviewUrl,
-  ] = useState<string | null>(null);
+  ] = useState<
+    string | null
+  >(null);
+
 
   const [
     busy,
     setBusy,
-  ] = useState(false);
+  ] =
+    useState(false);
+
 
   const [
     errorMessage,
     setErrorMessage,
-  ] = useState<string | null>(null);
+  ] = useState<
+    string | null
+  >(null);
+
 
   const [
     successMessage,
     setSuccessMessage,
-  ] = useState<string | null>(null);
+  ] = useState<
+    string | null
+  >(null);
+
 
   // Keep local state aligned after a server refresh.
   useEffect(() => {
@@ -114,10 +171,16 @@ export default function GroupAvatarEditor({
     initialAvatarUrl,
   ]);
 
+
   // Build a temporary local preview.
   useEffect(() => {
-    if (!selectedFile) {
-      setPreviewUrl(null);
+    if (
+      !selectedFile
+    ) {
+      setPreviewUrl(
+        null
+      );
+
       return;
     }
 
@@ -135,12 +198,21 @@ export default function GroupAvatarEditor({
         objectUrl
       );
     };
-  }, [selectedFile]);
+  }, [
+    selectedFile,
+  ]);
+
 
   function resetMessages() {
-    setErrorMessage(null);
-    setSuccessMessage(null);
+    setErrorMessage(
+      null
+    );
+
+    setSuccessMessage(
+      null
+    );
   }
+
 
   function handleFileChange(
     event:
@@ -149,7 +221,8 @@ export default function GroupAvatarEditor({
     resetMessages();
 
     const file =
-      event.target.files?.[0];
+      event.target
+        .files?.[0];
 
     if (!file) {
       return;
@@ -160,8 +233,12 @@ export default function GroupAvatarEditor({
         file.type
       )
     ) {
-      setSelectedFile(null);
-      event.target.value = "";
+      setSelectedFile(
+        null
+      );
+
+      event.target.value =
+        "";
 
       setErrorMessage(
         "Choose a JPEG, PNG or WebP image."
@@ -174,8 +251,12 @@ export default function GroupAvatarEditor({
       file.size >
       MAX_FILE_SIZE
     ) {
-      setSelectedFile(null);
-      event.target.value = "";
+      setSelectedFile(
+        null
+      );
+
+      event.target.value =
+        "";
 
       setErrorMessage(
         "Group pictures must be 5 MB or smaller."
@@ -184,8 +265,11 @@ export default function GroupAvatarEditor({
       return;
     }
 
-    setSelectedFile(file);
+    setSelectedFile(
+      file
+    );
   }
+
 
   async function handleUpload() {
     if (
@@ -195,146 +279,236 @@ export default function GroupAvatarEditor({
       return;
     }
 
+    const file =
+      selectedFile;
+
     resetMessages();
-    setBusy(true);
 
-    const extension =
-      getExtension(
-        selectedFile.type
-      );
+    setBusy(
+      true
+    );
 
-    const newPath =
-      `${groupId}/${crypto.randomUUID()}.${extension}`;
+    let newPath:
+      | string
+      | null = null;
 
-    const {
-      error: uploadError,
-    } = await supabase.storage
-      .from("group-avatars")
-      .upload(
-        newPath,
-        selectedFile,
-        {
-          cacheControl:
-            "31536000",
+    let fileUploaded =
+      false;
 
-          contentType:
-            selectedFile.type,
+    let groupSaved =
+      false;
 
-          upsert: false,
-        }
-      );
+    try {
+      const extension =
+        getExtension(
+          file.type
+        );
 
-    if (uploadError) {
-      console.error(
-        "Failed to upload group avatar:",
-        uploadError
-      );
+      newPath =
+        `${groupId}/${createBrowserUuid()}.${extension}`;
 
-      setErrorMessage(
-        uploadError.message
-      );
-
-      setBusy(false);
-
-      return;
-    }
-
-    const {
-      data: updatedGroup,
-      error: groupError,
-    } = await supabase
-      .from("groups")
-      .update({
-        avatar_path:
-          newPath,
-
-        updated_at:
-          new Date().toISOString(),
-      })
-      .eq("id", groupId)
-      .select("id")
-      .maybeSingle();
-
-    if (
-      groupError ||
-      !updatedGroup
-    ) {
-      console.error(
-        "Failed to save group avatar path:",
-        groupError
-      );
-
-      await supabase.storage
-        .from("group-avatars")
-        .remove([newPath]);
-
-      setErrorMessage(
-        "Unable to save the group picture."
-      );
-
-      setBusy(false);
-
-      return;
-    }
-
-    const {
-      data: signedUrlData,
-      error: signedUrlError,
-    } = await supabase.storage
-      .from("group-avatars")
-      .createSignedUrl(
-        newPath,
-        3600
-      );
-
-    if (signedUrlError) {
-      console.error(
-        "Failed to create group avatar URL:",
-        signedUrlError
-      );
-    }
-
-    // Remove the previous image only after
-    // the new database value is safely stored.
-    if (
-      avatarPath &&
-      avatarPath !== newPath
-    ) {
       const {
-        error: cleanupError,
-      } = await supabase.storage
-        .from("group-avatars")
-        .remove([avatarPath]);
+        error:
+          uploadError,
+      } =
+        await supabase.storage
+          .from(
+            "group-avatars"
+          )
+          .upload(
+            newPath,
+            file,
+            {
+              cacheControl:
+                "31536000",
 
-      if (cleanupError) {
-        console.error(
-          "Failed to remove previous group avatar:",
-          cleanupError
+              contentType:
+                file.type,
+
+              upsert:
+                false,
+            }
+          );
+
+      if (
+        uploadError
+      ) {
+        throw new Error(
+          uploadError.message
         );
       }
-    }
 
-    setAvatarPath(newPath);
+      fileUploaded =
+        true;
 
-    setAvatarUrl(
-      signedUrlData?.signedUrl ??
+      const {
+        data:
+          updatedGroup,
+
+        error:
+          groupError,
+      } =
+        await supabase
+          .from(
+            "groups"
+          )
+          .update({
+            avatar_path:
+              newPath,
+
+            updated_at:
+              new Date()
+                .toISOString(),
+          })
+          .eq(
+            "id",
+            groupId
+          )
+          .select(
+            "id"
+          )
+          .maybeSingle();
+
+      if (
+        groupError ||
+        !updatedGroup
+      ) {
+        throw new Error(
+          groupError?.message ??
+            "Unable to save the group picture."
+        );
+      }
+
+      groupSaved =
+        true;
+
+      const {
+        data:
+          signedUrlData,
+
+        error:
+          signedUrlError,
+      } =
+        await supabase.storage
+          .from(
+            "group-avatars"
+          )
+          .createSignedUrl(
+            newPath,
+            3600
+          );
+
+      if (
+        signedUrlError
+      ) {
+        console.error(
+          "Failed to create group avatar URL:",
+          signedUrlError
+        );
+      }
+
+      // Remove the previous image only after
+      // the new database value is safely stored.
+      if (
+        avatarPath &&
+        avatarPath !==
+          newPath
+      ) {
+        const {
+          error:
+            cleanupError,
+        } =
+          await supabase.storage
+            .from(
+              "group-avatars"
+            )
+            .remove([
+              avatarPath,
+            ]);
+
+        if (
+          cleanupError
+        ) {
+          console.error(
+            "Failed to remove previous group avatar:",
+            cleanupError
+          );
+        }
+      }
+
+      setAvatarPath(
+        newPath
+      );
+
+      setAvatarUrl(
+        signedUrlData?.signedUrl ??
+          null
+      );
+
+      setSelectedFile(
         null
-    );
+      );
 
-    setSelectedFile(null);
+      if (
+        inputRef.current
+      ) {
+        inputRef.current.value =
+          "";
+      }
 
-    if (inputRef.current) {
-      inputRef.current.value = "";
+      setSuccessMessage(
+        "Group picture updated."
+      );
+
+      router.refresh();
+    } catch (error) {
+      console.error(
+        "Failed to update group picture:",
+        error
+      );
+
+      // Avoid an orphaned Storage file
+      // when the database update fails.
+      if (
+        fileUploaded &&
+        !groupSaved &&
+        newPath
+      ) {
+        const {
+          error:
+            cleanupError,
+        } =
+          await supabase.storage
+            .from(
+              "group-avatars"
+            )
+            .remove([
+              newPath,
+            ]);
+
+        if (
+          cleanupError
+        ) {
+          console.error(
+            "Failed to clean up unsuccessful group picture upload:",
+            cleanupError
+          );
+        }
+      }
+
+      setErrorMessage(
+        getErrorMessage(
+          error,
+          "Unable to update the group picture."
+        )
+      );
+    } finally {
+      setBusy(
+        false
+      );
     }
-
-    setSuccessMessage(
-      "Group picture updated."
-    );
-
-    setBusy(false);
-
-    router.refresh();
   }
+
 
   async function handleRemove() {
     if (
@@ -345,84 +519,133 @@ export default function GroupAvatarEditor({
     }
 
     resetMessages();
-    setBusy(true);
+
+    setBusy(
+      true
+    );
 
     const oldPath =
       avatarPath;
 
-    const {
-      data: updatedGroup,
-      error: groupError,
-    } = await supabase
-      .from("groups")
-      .update({
-        avatar_path: null,
+    try {
+      const {
+        data:
+          updatedGroup,
 
-        updated_at:
-          new Date().toISOString(),
-      })
-      .eq("id", groupId)
-      .select("id")
-      .maybeSingle();
+        error:
+          groupError,
+      } =
+        await supabase
+          .from(
+            "groups"
+          )
+          .update({
+            avatar_path:
+              null,
 
-    if (
-      groupError ||
-      !updatedGroup
-    ) {
+            updated_at:
+              new Date()
+                .toISOString(),
+          })
+          .eq(
+            "id",
+            groupId
+          )
+          .select(
+            "id"
+          )
+          .maybeSingle();
+
+      if (
+        groupError ||
+        !updatedGroup
+      ) {
+        throw new Error(
+          groupError?.message ??
+            "Unable to remove the group picture."
+        );
+      }
+
+      const {
+        error:
+          removeError,
+      } =
+        await supabase.storage
+          .from(
+            "group-avatars"
+          )
+          .remove([
+            oldPath,
+          ]);
+
+      if (
+        removeError
+      ) {
+        console.error(
+          "Failed to remove group avatar file:",
+          removeError
+        );
+      }
+
+      setAvatarPath(
+        null
+      );
+
+      setAvatarUrl(
+        null
+      );
+
+      setSelectedFile(
+        null
+      );
+
+      if (
+        inputRef.current
+      ) {
+        inputRef.current.value =
+          "";
+      }
+
+      setSuccessMessage(
+        "Group picture removed."
+      );
+
+      router.refresh();
+    } catch (error) {
       console.error(
-        "Failed to remove group avatar:",
-        groupError
+        "Failed to remove group picture:",
+        error
       );
 
       setErrorMessage(
-        "Unable to remove the group picture."
+        getErrorMessage(
+          error,
+          "Unable to remove the group picture."
+        )
       );
-
-      setBusy(false);
-
-      return;
-    }
-
-    const {
-      error: removeError,
-    } = await supabase.storage
-      .from("group-avatars")
-      .remove([oldPath]);
-
-    if (removeError) {
-      console.error(
-        "Failed to remove group avatar file:",
-        removeError
+    } finally {
+      setBusy(
+        false
       );
     }
-
-    setAvatarPath(null);
-    setAvatarUrl(null);
-    setSelectedFile(null);
-
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
-
-    setSuccessMessage(
-      "Group picture removed."
-    );
-
-    setBusy(false);
-
-    router.refresh();
   }
+
 
   const displayedAvatar =
     previewUrl ??
     avatarUrl;
 
+
   return (
     <div className="rounded-2xl border border-line bg-surface-soft p-5">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
         <GroupAvatar
-          src={displayedAvatar}
-          groupName={groupName}
+          src={
+            displayedAvatar
+          }
+          groupName={
+            groupName
+          }
           size="xl"
         />
 
@@ -435,31 +658,45 @@ export default function GroupAvatarEditor({
             Add an image to make this group easier to recognise across TripSync.
           </p>
 
+          {/* Native device picker */}
           <input
-            ref={inputRef}
+            ref={
+              inputRef
+            }
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            onChange={handleFileChange}
+            onChange={
+              handleFileChange
+            }
             className="sr-only"
           />
 
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={busy}
+              disabled={
+                busy
+              }
               onClick={() =>
-                inputRef.current?.click()
+                inputRef.current
+                  ?.click()
               }
               className="cursor-pointer rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium text-ink transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Choose image
+              {avatarPath
+                ? "Choose new image"
+                : "Choose image"}
             </button>
 
             {selectedFile && (
               <button
                 type="button"
-                disabled={busy}
-                onClick={handleUpload}
+                disabled={
+                  busy
+                }
+                onClick={
+                  handleUpload
+                }
                 className="cursor-pointer rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {busy
@@ -468,17 +705,57 @@ export default function GroupAvatarEditor({
               </button>
             )}
 
-            {avatarPath && (
+            {avatarPath &&
+              !selectedFile && (
+                <button
+                  type="button"
+                  disabled={
+                    busy
+                  }
+                  onClick={
+                    handleRemove
+                  }
+                  className="cursor-pointer rounded-xl border border-danger-border bg-danger-surface px-3.5 py-2 text-sm font-medium text-danger-text transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busy
+                    ? "Removing..."
+                    : "Remove"}
+                </button>
+              )}
+          </div>
+
+          {selectedFile && (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2">
+              <p className="min-w-0 truncate text-xs text-muted">
+                {
+                  selectedFile.name ||
+                  "Selected photo"
+                }
+              </p>
+
               <button
                 type="button"
-                disabled={busy}
-                onClick={handleRemove}
-                className="cursor-pointer rounded-xl border border-danger-border bg-danger-surface px-3.5 py-2 text-sm font-medium text-danger-text transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={
+                  busy
+                }
+                onClick={() => {
+                  setSelectedFile(
+                    null
+                  );
+
+                  if (
+                    inputRef.current
+                  ) {
+                    inputRef.current.value =
+                      "";
+                  }
+                }}
+                className="shrink-0 cursor-pointer text-xs font-medium text-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Remove
+                Cancel
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
           <p className="mt-3 text-xs text-subtle">
             JPEG, PNG or WebP. Maximum 5 MB.
@@ -491,7 +768,9 @@ export default function GroupAvatarEditor({
           role="alert"
           className="mt-4 rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-text"
         >
-          {errorMessage}
+          {
+            errorMessage
+          }
         </div>
       )}
 
@@ -500,7 +779,9 @@ export default function GroupAvatarEditor({
           role="status"
           className="mt-4 rounded-xl border border-success-border bg-success-surface px-4 py-3 text-sm text-success-text"
         >
-          {successMessage}
+          {
+            successMessage
+          }
         </div>
       )}
     </div>

@@ -600,15 +600,18 @@ export default async function TripPhotosPage({
         <section className="mt-8">
           <TripPhotoGallery
             photos={
-              photos
+                photos
             }
             dayOptions={
-              dayOptions
+                dayOptions
             }
             placeOptions={
-              placeOptions
+                placeOptions
             }
-          />
+            isTripCreator={
+                isTripCreator
+            }
+            />
         </section>
       </div>
     </main>

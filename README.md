@@ -22,6 +22,8 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Mobile camera capture for adding new trip photos
 - Photo captions and associations with trip days and saved places
 - Responsive photo gallery and full-screen lightbox
+- Single and multi-photo saving with device-native sharing where supported
+- Owner bulk-selection and deletion for trip photo management
 - Live weather forecasts for upcoming trips
 - Shared expense tracking and settlements
 - Personal, required, and shared packing lists

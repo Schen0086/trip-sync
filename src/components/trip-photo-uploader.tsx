@@ -12,6 +12,10 @@ import {
 } from "next/navigation";
 
 import {
+  createBrowserUuid,
+} from "@/lib/browser-uuid";
+
+import {
   createClient,
 } from "@/lib/supabase/client";
 
@@ -52,10 +56,9 @@ function SelectedPhotoPreview({
   const [
     previewUrl,
     setPreviewUrl,
-  ] =
-    useState<
-      string | null
-    >(null);
+  ] = useState<
+    string | null
+  >(null);
 
 
   useEffect(() => {
@@ -82,7 +85,8 @@ function SelectedPhotoPreview({
     <div className="overflow-hidden rounded-xl border border-line bg-surface">
       <div className="aspect-square bg-surface-soft">
         {previewUrl && (
-          // Native object URLs do not need Next Image.
+          // Native object URLs do not
+          // need Next Image.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={
@@ -133,28 +137,28 @@ export default function TripPhotoUploader({
   const [
     selectedFiles,
     setSelectedFiles,
-  ] =
-    useState<File[]>(
-      []
-    );
+  ] = useState<File[]>(
+    []
+  );
+
 
   const [
     selectedDate,
     setSelectedDate,
-  ] =
-    useState("");
+  ] = useState("");
+
 
   const [
     selectedPlaceId,
     setSelectedPlaceId,
-  ] =
-    useState("");
+  ] = useState("");
+
 
   const [
     caption,
     setCaption,
-  ] =
-    useState("");
+  ] = useState("");
+
 
   const [
     busy,
@@ -162,29 +166,29 @@ export default function TripPhotoUploader({
   ] =
     useState(false);
 
+
   const [
     progressMessage,
     setProgressMessage,
-  ] =
-    useState<
-      string | null
-    >(null);
+  ] = useState<
+    string | null
+  >(null);
+
 
   const [
     errorMessage,
     setErrorMessage,
-  ] =
-    useState<
-      string | null
-    >(null);
+  ] = useState<
+    string | null
+  >(null);
+
 
   const [
     successMessage,
     setSuccessMessage,
-  ] =
-    useState<
-      string | null
-    >(null);
+  ] = useState<
+    string | null
+  >(null);
 
 
   function resetMessages() {
@@ -237,8 +241,7 @@ export default function TripPhotoUploader({
 
     const files =
       Array.from(
-        event.target
-          .files ??
+        event.target.files ??
           []
       );
 
@@ -253,6 +256,7 @@ export default function TripPhotoUploader({
 
     const errors:
       string[] = [];
+
 
     files
       .slice(
@@ -282,6 +286,7 @@ export default function TripPhotoUploader({
         }
       );
 
+
     if (
       files.length >
       TRIP_PHOTO_MAX_BATCH
@@ -291,6 +296,7 @@ export default function TripPhotoUploader({
       );
     }
 
+
     setSelectedFiles(
       accepted
     );
@@ -298,6 +304,7 @@ export default function TripPhotoUploader({
     setCaption(
       ""
     );
+
 
     if (
       errors.length >
@@ -309,6 +316,7 @@ export default function TripPhotoUploader({
         )
       );
     }
+
 
     event.target.value =
       "";
@@ -334,6 +342,7 @@ export default function TripPhotoUploader({
         file
       );
 
+
     if (
       validationError
     ) {
@@ -346,6 +355,7 @@ export default function TripPhotoUploader({
 
       return;
     }
+
 
     if (
       selectedFiles.length >=
@@ -360,6 +370,7 @@ export default function TripPhotoUploader({
 
       return;
     }
+
 
     setSelectedFiles(
       (current) => [
@@ -433,13 +444,16 @@ export default function TripPhotoUploader({
 
   async function uploadPhoto(
     file: File,
-
     photoCaption:
       | string
       | null
   ) {
+    // Do not call crypto.randomUUID()
+    // directly here. It is unavailable
+    // when a phone accesses the local
+    // production build over plain HTTP.
     const photoId =
-      crypto.randomUUID();
+      createBrowserUuid();
 
     const extension =
       getTripPhotoExtension(
@@ -520,8 +534,9 @@ export default function TripPhotoUploader({
     if (
       metadataError
     ) {
-      // Do not leave an orphaned object if
-      // metadata creation fails.
+      // Do not leave an orphaned
+      // Storage object if metadata
+      // creation fails.
       await supabase.storage
         .from(
           "trip-photos"
@@ -556,8 +571,8 @@ export default function TripPhotoUploader({
     let successfulUploads =
       0;
 
-    const failedUploads:
-      string[] = [];
+    const failedFiles:
+      File[] = [];
 
 
     const singleCaption =
@@ -573,65 +588,100 @@ export default function TripPhotoUploader({
         : null;
 
 
-    for (
-      let index = 0;
-      index <
-      selectedFiles.length;
-      index += 1
-    ) {
-      const file =
-        selectedFiles[
-          index
-        ];
-
-      setProgressMessage(
-        `Uploading ${index + 1} of ${selectedFiles.length}...`
-      );
-
-      try {
-        await uploadPhoto(
-          file,
-          singleCaption
-        );
-
-        successfulUploads +=
-          1;
-      } catch (
-        uploadError
+    try {
+      for (
+        let index = 0;
+        index <
+        selectedFiles.length;
+        index += 1
       ) {
-        console.error(
-          "Failed to upload trip photo:",
-          uploadError
+        const file =
+          selectedFiles[
+            index
+          ];
+
+        setProgressMessage(
+          `Uploading ${index + 1} of ${selectedFiles.length}...`
         );
 
-        failedUploads.push(
-          file.name ||
-            `Photo ${index + 1}`
+
+        try {
+          await uploadPhoto(
+            file,
+            singleCaption
+          );
+
+          successfulUploads +=
+            1;
+        } catch (
+          uploadError
+        ) {
+          console.error(
+            "Failed to upload trip photo:",
+            {
+              fileName:
+                file.name,
+
+              fileType:
+                file.type,
+
+              fileSize:
+                file.size,
+
+              error:
+                uploadError,
+            }
+          );
+
+          failedFiles.push(
+            file
+          );
+        }
+      }
+
+
+      if (
+        successfulUploads >
+        0
+      ) {
+        setSuccessMessage(
+          successfulUploads ===
+            1
+            ? "Photo added to the trip gallery."
+            : `${successfulUploads} photos added to the trip gallery.`
+        );
+
+        router.refresh();
+      }
+
+
+      if (
+        failedFiles.length >
+        0
+      ) {
+        // Keep failures selected so
+        // the user can retry rather
+        // than choosing them again.
+        setSelectedFiles(
+          failedFiles
+        );
+
+        setErrorMessage(
+          failedFiles.length ===
+            1
+            ? "1 photo could not be uploaded. Please try again."
+            : `${failedFiles.length} photos could not be uploaded. Please try again.`
+        );
+      } else {
+        setSelectedFiles(
+          []
+        );
+
+        setCaption(
+          ""
         );
       }
-    }
 
-
-    setProgressMessage(
-      null
-    );
-
-    setBusy(
-      false
-    );
-
-
-    if (
-      successfulUploads >
-      0
-    ) {
-      setSelectedFiles(
-        []
-      );
-
-      setCaption(
-        ""
-      );
 
       if (
         pickerInputRef.current
@@ -646,26 +696,25 @@ export default function TripPhotoUploader({
         cameraInputRef.current.value =
           "";
       }
-
-      setSuccessMessage(
-        successfulUploads ===
-          1
-          ? "Photo added to the trip gallery."
-          : `${successfulUploads} photos added to the trip gallery.`
+    } catch (error) {
+      // This is a final safeguard for
+      // unexpected browser errors that
+      // occur outside one file's upload.
+      console.error(
+        "Unexpected trip photo upload error:",
+        error
       );
 
-      router.refresh();
-    }
-
-
-    if (
-      failedUploads.length >
-      0
-    ) {
       setErrorMessage(
-        `Unable to upload: ${failedUploads.join(
-          ", "
-        )}.`
+        "The photos could not be uploaded. Please try again."
+      );
+    } finally {
+      setProgressMessage(
+        null
+      );
+
+      setBusy(
+        false
       );
     }
   }
@@ -684,8 +733,10 @@ export default function TripPhotoUploader({
             Add photos
           </h2>
 
+          {/* Keep user-facing copy focused
+              on actual upload constraints. */}
           <p className="mt-1 text-sm text-muted">
-            Upload from your device or take a new photo on mobile.
+            Up to 20 photos at once, 5 MB each.
           </p>
         </div>
 
@@ -705,9 +756,9 @@ export default function TripPhotoUploader({
 
 
       <div className="border-t border-line p-5 sm:p-6">
-        {/* Normal native device picker.
-            Desktop opens the operating-system file browser.
-            Mobile uses the device's native media/file picker. */}
+        {/* Normal native picker:
+            file browser on desktop,
+            native photo picker on mobile. */}
         <input
           ref={
             pickerInputRef
@@ -724,9 +775,8 @@ export default function TripPhotoUploader({
         />
 
 
-        {/* Dedicated mobile camera input.
-            The normal picker remains separate so users can
-            still choose existing gallery photos. */}
+        {/* Dedicated rear-camera capture
+            for phone-sized layouts. */}
         <input
           ref={
             cameraInputRef
@@ -759,7 +809,6 @@ export default function TripPhotoUploader({
           </button>
 
 
-          {/* Dedicated camera shortcut for phone-sized screens. */}
           <button
             type="button"
             disabled={
@@ -776,8 +825,8 @@ export default function TripPhotoUploader({
         </div>
 
 
-        <p className="mt-3 max-w-2xl text-xs leading-5 text-subtle">
-          JPEG, PNG or WebP, up to 5 MB each. You can select up to 20 photos at once. On a phone or tablet, Add photos uses the native device picker. On a laptop or desktop, it opens the normal file browser.
+        <p className="mt-3 text-xs text-subtle">
+          JPEG, PNG or WebP.
         </p>
 
 
@@ -853,7 +902,7 @@ export default function TripPhotoUploader({
             </div>
 
 
-            {/* Optional metadata applied to the whole batch. */}
+            {/* Optional metadata applied to the batch. */}
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div>
                 <label
@@ -1009,7 +1058,7 @@ export default function TripPhotoUploader({
             {selectedFiles.length >
               1 && (
               <p className="mt-4 text-xs leading-5 text-subtle">
-                The selected day and place will be applied to all of these photos. Individual captions can be added after upload by opening a photo in the gallery.
+                The selected day and place will be applied to all photos. Captions can be added individually after upload.
               </p>
             )}
 

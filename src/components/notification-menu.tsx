@@ -13,6 +13,7 @@ import {
 } from "next/navigation";
 
 import Avatar from "@/components/avatar";
+
 import ConfirmActionButton from "@/components/confirm-action-button";
 
 import {
@@ -52,7 +53,6 @@ function getNotificationActor(
     };
   }
 
-
   return {
     displayName:
       notification
@@ -76,7 +76,8 @@ export default function NotificationMenu({
   const [
     open,
     setOpen,
-  ] = useState(false);
+  ] =
+    useState(false);
 
 
   const menuRef =
@@ -91,7 +92,9 @@ export default function NotificationMenu({
 
   // Close the dropdown when navigation occurs.
   useEffect(() => {
-    setOpen(false);
+    setOpen(
+      false
+    );
   }, [
     pathname,
   ]);
@@ -108,7 +111,9 @@ export default function NotificationMenu({
           event.target as Node
         )
       ) {
-        setOpen(false);
+        setOpen(
+          false
+        );
       }
     }
 
@@ -120,7 +125,9 @@ export default function NotificationMenu({
         event.key ===
         "Escape"
       ) {
-        setOpen(false);
+        setOpen(
+          false
+        );
       }
     }
 
@@ -195,6 +202,7 @@ export default function NotificationMenu({
           className="h-5 w-5"
         >
           <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+
           <path d="M10 21h4" />
         </svg>
 
@@ -210,12 +218,15 @@ export default function NotificationMenu({
       </button>
 
 
-      {/* Dropdown */}
+      {/* Dropdown.
+          On phones this is positioned relative to the
+          viewport rather than the bell, guaranteeing that
+          it stays inside the screen. */}
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div className="fixed inset-x-2 top-[76px] z-50 flex max-h-[calc(100dvh-84px)] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl md:absolute md:inset-x-auto md:right-0 md:top-full md:mt-2 md:max-h-none md:w-[22rem]">
           {/* Header */}
-          <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-            <div>
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-3 py-2.5 sm:px-4 sm:py-3">
+            <div className="min-w-0">
               <h2 className="font-semibold text-ink">
                 Notifications
               </h2>
@@ -235,10 +246,11 @@ export default function NotificationMenu({
                 action={
                   markAllNotificationsRead
                 }
+                className="shrink-0"
               >
                 <button
                   type="submit"
-                  className="cursor-pointer text-xs font-medium text-brand-700"
+                  className="cursor-pointer whitespace-nowrap text-xs font-medium text-brand-700"
                 >
                   Mark all read
                 </button>
@@ -250,19 +262,17 @@ export default function NotificationMenu({
           {/* Notifications */}
           {notifications.length ===
           0 ? (
-            <div className="px-5 py-10 text-center">
+            <div className="px-5 py-8 text-center sm:py-10">
               <p className="font-medium text-ink">
                 No notifications
               </p>
 
               <p className="mt-1 text-sm text-muted">
-                Updates involving
-                you will appear
-                here.
+                Updates involving you will appear here.
               </p>
             </div>
           ) : (
-            <div className="max-h-[420px] overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto md:max-h-[420px]">
               {notifications.map(
                 (
                   notification
@@ -271,12 +281,10 @@ export default function NotificationMenu({
                     !notification
                       .read_at;
 
-
                   const actor =
                     getNotificationActor(
                       notification
                     );
-
 
                   return (
                     <div
@@ -285,8 +293,8 @@ export default function NotificationMenu({
                       }
                       className={
                         unread
-                          ? "flex items-start gap-2 border-b border-line bg-brand-50 p-3 last:border-b-0"
-                          : "flex items-start gap-2 border-b border-line p-3 last:border-b-0"
+                          ? "flex items-start gap-1.5 border-b border-line bg-brand-50 p-2.5 last:border-b-0 sm:gap-2 sm:p-3"
+                          : "flex items-start gap-1.5 border-b border-line p-2.5 last:border-b-0 sm:gap-2 sm:p-3"
                       }
                     >
                       {/* Open notification */}
@@ -304,12 +312,11 @@ export default function NotificationMenu({
                           }
                         />
 
-
                         <button
                           type="submit"
                           className="w-full cursor-pointer rounded-lg p-1 text-left transition hover:bg-surface-hover"
                         >
-                          <div className="flex items-start gap-3">
+                          <div className="flex items-start gap-2.5 sm:gap-3">
                             {/* Actor avatar */}
                             <div className="relative shrink-0">
                               <Avatar
@@ -319,7 +326,7 @@ export default function NotificationMenu({
                                 displayName={
                                   actor.displayName
                                 }
-                                size="md"
+                                size="sm"
                               />
 
                               {unread && (
@@ -333,19 +340,19 @@ export default function NotificationMenu({
 
                             {/* Notification content */}
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-ink">
+                              <p className="line-clamp-1 text-[13px] font-semibold leading-5 text-ink sm:text-sm">
                                 {
                                   notification.title
                                 }
                               </p>
 
-                              <p className="mt-1 text-sm leading-5 text-muted">
+                              <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted sm:mt-1 sm:text-sm sm:leading-5">
                                 {
                                   notification.message
                                 }
                               </p>
 
-                              <p className="mt-1.5 text-[11px] text-subtle">
+                              <p className="mt-1 text-[10px] text-subtle sm:mt-1.5 sm:text-[11px]">
                                 {formatActivityTimestamp(
                                   notification.created_at
                                 )}
@@ -390,9 +397,13 @@ export default function NotificationMenu({
                             className="h-4 w-4"
                           >
                             <path d="M3 6h18" />
+
                             <path d="M8 6V4h8v2" />
+
                             <path d="M19 6l-1 14H6L5 6" />
+
                             <path d="M10 11v5" />
+
                             <path d="M14 11v5" />
                           </svg>
                         </ConfirmActionButton>
@@ -406,7 +417,7 @@ export default function NotificationMenu({
 
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-3 border-t border-line bg-surface-soft px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-line bg-surface-soft px-3 py-2.5 sm:px-4 sm:py-3">
             <Link
               href="/notifications"
               className="text-sm font-medium text-brand-700"

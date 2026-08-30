@@ -34,13 +34,114 @@ type TripPhotoGalleryProps = {
 
   placeOptions:
     TripPhotoPlaceOption[];
+
+  isTripCreator: boolean;
 };
+
+
+function getFileExtension(
+  photo: TripPhotoRecord,
+  blob?: Blob
+) {
+  const pathExtension =
+    photo.storagePath
+      .split(".")
+      .pop()
+      ?.toLowerCase();
+
+  if (
+    pathExtension ===
+      "jpg" ||
+    pathExtension ===
+      "jpeg" ||
+    pathExtension ===
+      "png" ||
+    pathExtension ===
+      "webp"
+  ) {
+    return pathExtension ===
+      "jpeg"
+      ? "jpg"
+      : pathExtension;
+  }
+
+  switch (
+    blob?.type
+  ) {
+    case "image/png":
+      return "png";
+
+    case "image/webp":
+      return "webp";
+
+    default:
+      return "jpg";
+  }
+}
+
+
+function createPhotoFileName(
+  photo: TripPhotoRecord,
+  index: number,
+  blob?: Blob
+) {
+  const extension =
+    getFileExtension(
+      photo,
+      blob
+    );
+
+  return `TripSync-photo-${index + 1}.${extension}`;
+}
+
+
+function triggerDownload(
+  blob: Blob,
+  fileName: string
+) {
+  const objectUrl =
+    URL.createObjectURL(
+      blob
+    );
+
+  const anchor =
+    document.createElement(
+      "a"
+    );
+
+  anchor.href =
+    objectUrl;
+
+  anchor.download =
+    fileName;
+
+  anchor.style.display =
+    "none";
+
+  document.body.appendChild(
+    anchor
+  );
+
+  anchor.click();
+
+  anchor.remove();
+
+  window.setTimeout(
+    () => {
+      URL.revokeObjectURL(
+        objectUrl
+      );
+    },
+    1000
+  );
+}
 
 
 export default function TripPhotoGallery({
   photos,
   dayOptions,
   placeOptions,
+  isTripCreator,
 }: TripPhotoGalleryProps) {
   const router =
     useRouter();
@@ -67,6 +168,8 @@ export default function TripPhotoGallery({
   ] =
     useState("all");
 
+
+  // Lightbox selection.
   const [
     selectedPhotoId,
     setSelectedPhotoId,
@@ -74,6 +177,25 @@ export default function TripPhotoGallery({
     useState<
       string | null
     >(null);
+
+
+  // Multi-select mode.
+  const [
+    selectionMode,
+    setSelectionMode,
+  ] =
+    useState(false);
+
+  const [
+    selectedIds,
+    setSelectedIds,
+  ] =
+    useState<
+      Set<string>
+    >(
+      new Set()
+    );
+
 
   const [
     editCaption,
@@ -93,11 +215,19 @@ export default function TripPhotoGallery({
   ] =
     useState("");
 
+
   const [
     saving,
     setSaving,
   ] =
     useState(false);
+
+  const [
+    bulkBusy,
+    setBulkBusy,
+  ] =
+    useState(false);
+
 
   const [
     message,
@@ -110,6 +240,22 @@ export default function TripPhotoGallery({
   const [
     errorMessage,
     setErrorMessage,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    galleryMessage,
+    setGalleryMessage,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    galleryError,
+    setGalleryError,
   ] =
     useState<
       string | null
@@ -165,6 +311,22 @@ export default function TripPhotoGallery({
     );
 
 
+  const selectedPhotos =
+    useMemo(
+      () =>
+        photos.filter(
+          (photo) =>
+            selectedIds.has(
+              photo.id
+            )
+        ),
+      [
+        photos,
+        selectedIds,
+      ]
+    );
+
+
   const selectedPhoto =
     useMemo(
       () =>
@@ -191,8 +353,7 @@ export default function TripPhotoGallery({
       : -1;
 
 
-  // Initialise editable fields whenever another
-  // photo is opened.
+  // Initialise lightbox edit fields.
   useEffect(() => {
     if (
       !selectedPhoto
@@ -227,8 +388,7 @@ export default function TripPhotoGallery({
   ]);
 
 
-  // If filtering removes the currently open image,
-  // close the lightbox instead of leaving stale data.
+  // Close the lightbox if filtering hides it.
   useEffect(() => {
     if (
       selectedPhotoId &&
@@ -248,7 +408,37 @@ export default function TripPhotoGallery({
   ]);
 
 
-  // Prevent the page behind the lightbox from moving.
+  // Remove IDs that no longer exist after
+  // realtime deletion or router refresh.
+  useEffect(() => {
+    setSelectedIds(
+      (current) => {
+        const validIds =
+          new Set(
+            photos.map(
+              (photo) =>
+                photo.id
+            )
+          );
+
+        return new Set(
+          Array.from(
+            current
+          ).filter(
+            (id) =>
+              validIds.has(
+                id
+              )
+          )
+        );
+      }
+    );
+  }, [
+    photos,
+  ]);
+
+
+  // Prevent the page behind the lightbox from scrolling.
   useEffect(() => {
     if (
       !selectedPhotoId
@@ -319,8 +509,7 @@ export default function TripPhotoGallery({
   }
 
 
-  // Escape and arrow keys make the desktop lightbox
-  // usable without reaching for the mouse.
+  // Desktop keyboard lightbox controls.
   useEffect(() => {
     if (
       !selectedPhoto
@@ -346,7 +535,6 @@ export default function TripPhotoGallery({
         moveLightbox(
           -1
         );
-
         return;
       }
 
@@ -382,6 +570,482 @@ export default function TripPhotoGallery({
     setPlaceFilter(
       "all"
     );
+  }
+
+
+  function startSelectionMode() {
+    setSelectionMode(
+      true
+    );
+
+    setSelectedPhotoId(
+      null
+    );
+
+    setGalleryMessage(
+      null
+    );
+
+    setGalleryError(
+      null
+    );
+  }
+
+
+  function exitSelectionMode() {
+    if (bulkBusy) {
+      return;
+    }
+
+    setSelectionMode(
+      false
+    );
+
+    setSelectedIds(
+      new Set()
+    );
+
+    setGalleryMessage(
+      null
+    );
+
+    setGalleryError(
+      null
+    );
+  }
+
+
+  function togglePhotoSelection(
+    photoId: string
+  ) {
+    if (bulkBusy) {
+      return;
+    }
+
+    setSelectedIds(
+      (current) => {
+        const next =
+          new Set(
+            current
+          );
+
+        if (
+          next.has(
+            photoId
+          )
+        ) {
+          next.delete(
+            photoId
+          );
+        } else {
+          next.add(
+            photoId
+          );
+        }
+
+        return next;
+      }
+    );
+  }
+
+
+  function selectAllVisible() {
+    if (bulkBusy) {
+      return;
+    }
+
+    setSelectedIds(
+      (current) => {
+        const next =
+          new Set(
+            current
+          );
+
+        visiblePhotos.forEach(
+          (photo) => {
+            next.add(
+              photo.id
+            );
+          }
+        );
+
+        return next;
+      }
+    );
+  }
+
+
+  function clearSelection() {
+    if (bulkBusy) {
+      return;
+    }
+
+    setSelectedIds(
+      new Set()
+    );
+  }
+
+
+  async function fetchPhotoFile(
+    photo: TripPhotoRecord,
+    index: number
+  ) {
+    if (
+      !photo.imageUrl
+    ) {
+      throw new Error(
+        "Photo is unavailable."
+      );
+    }
+
+    const response =
+      await fetch(
+        photo.imageUrl
+      );
+
+    if (
+      !response.ok
+    ) {
+      throw new Error(
+        "Unable to download photo."
+      );
+    }
+
+    const blob =
+      await response.blob();
+
+    return new File(
+      [
+        blob,
+      ],
+      createPhotoFileName(
+        photo,
+        index,
+        blob
+      ),
+      {
+        type:
+          blob.type ||
+          "image/jpeg",
+      }
+    );
+  }
+
+
+  /**
+   * Save one or more photos.
+   *
+   * Mobile HTTPS browsers can use the native
+   * operating-system share sheet when file
+   * sharing is supported.
+   *
+   * Other browsers fall back to normal downloads.
+   */
+  async function savePhotos(
+    photosToSave:
+      TripPhotoRecord[]
+  ) {
+    if (
+      photosToSave.length ===
+        0 ||
+      bulkBusy
+    ) {
+      return;
+    }
+
+    setBulkBusy(
+      true
+    );
+
+    setGalleryMessage(
+      null
+    );
+
+    setGalleryError(
+      null
+    );
+
+    try {
+      const availablePhotos =
+        photosToSave.filter(
+          (photo) =>
+            Boolean(
+              photo.imageUrl
+            )
+        );
+
+      if (
+        availablePhotos.length ===
+        0
+      ) {
+        throw new Error(
+          "The selected photos are currently unavailable."
+        );
+      }
+
+
+      const files =
+        await Promise.all(
+          availablePhotos.map(
+            (
+              photo,
+              index
+            ) =>
+              fetchPhotoFile(
+                photo,
+                index
+              )
+          )
+        );
+
+
+      // Prefer the device-native share/save
+      // interface when files can be shared.
+      if (
+        typeof navigator !==
+          "undefined" &&
+        typeof navigator.canShare ===
+          "function" &&
+        typeof navigator.share ===
+          "function" &&
+        navigator.canShare({
+          files,
+        })
+      ) {
+        try {
+          await navigator.share({
+            files,
+
+            title:
+              files.length ===
+                1
+                ? "TripSync photo"
+                : "TripSync photos",
+          });
+
+          setGalleryMessage(
+            files.length ===
+              1
+              ? "Photo ready to save or share."
+              : `${files.length} photos ready to save or share.`
+          );
+
+          return;
+        } catch (shareError) {
+          // Cancelling the native share sheet
+          // is not an application error.
+          if (
+            shareError instanceof
+              DOMException &&
+            shareError.name ===
+              "AbortError"
+          ) {
+            return;
+          }
+
+          console.error(
+            "Native photo sharing failed:",
+            shareError
+          );
+        }
+      }
+
+
+      // Desktop and unsupported-browser fallback.
+      files.forEach(
+        (
+          file,
+          index
+        ) => {
+          window.setTimeout(
+            () => {
+              triggerDownload(
+                file,
+                file.name
+              );
+            },
+            index * 150
+          );
+        }
+      );
+
+      setGalleryMessage(
+        files.length ===
+          1
+          ? "Photo download started."
+          : `${files.length} photo downloads started.`
+      );
+    } catch (error) {
+      console.error(
+        "Failed to save trip photos:",
+        error
+      );
+
+      setGalleryError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save the selected photos."
+      );
+    } finally {
+      setBulkBusy(
+        false
+      );
+    }
+  }
+
+
+  async function deleteSelectedPhotos() {
+    if (
+      !isTripCreator ||
+      selectedPhotos.length ===
+        0 ||
+      bulkBusy
+    ) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        selectedPhotos.length ===
+          1
+          ? "Delete this photo from the trip gallery? This cannot be undone."
+          : `Delete these ${selectedPhotos.length} photos from the trip gallery? This cannot be undone.`
+      );
+
+    if (
+      !confirmed
+    ) {
+      return;
+    }
+
+    setBulkBusy(
+      true
+    );
+
+    setGalleryMessage(
+      null
+    );
+
+    setGalleryError(
+      null
+    );
+
+
+    try {
+      const photoIds =
+        selectedPhotos.map(
+          (photo) =>
+            photo.id
+        );
+
+      const {
+        data:
+          deletedRows,
+        error:
+          deleteError,
+      } =
+        await supabase
+          .from(
+            "trip_photos"
+          )
+          .delete()
+          .in(
+            "id",
+            photoIds
+          )
+          .select(
+            "id"
+          );
+
+
+      if (
+        deleteError
+      ) {
+        throw new Error(
+          deleteError.message
+        );
+      }
+
+
+      if (
+        !deletedRows ||
+        deletedRows.length !==
+          photoIds.length
+      ) {
+        throw new Error(
+          "Not all selected photos could be deleted."
+        );
+      }
+
+
+      const storagePaths =
+        selectedPhotos.map(
+          (photo) =>
+            photo.storagePath
+        );
+
+
+      const {
+        error:
+          storageError,
+      } =
+        await supabase.storage
+          .from(
+            "trip-photos"
+          )
+          .remove(
+            storagePaths
+          );
+
+
+      if (
+        storageError
+      ) {
+        // Metadata is already deleted, so do not
+        // restore stale records if Storage cleanup
+        // itself has a problem.
+        console.error(
+          "Failed to remove one or more trip photo files:",
+          storageError
+        );
+      }
+
+
+      const deletedCount =
+        selectedPhotos.length;
+
+      setSelectedIds(
+        new Set()
+      );
+
+      setSelectionMode(
+        false
+      );
+
+      setGalleryMessage(
+        deletedCount ===
+          1
+          ? "Photo deleted."
+          : `${deletedCount} photos deleted.`
+      );
+
+      router.refresh();
+    } catch (error) {
+      console.error(
+        "Failed to delete selected trip photos:",
+        error
+      );
+
+      setGalleryError(
+        error instanceof Error
+          ? error.message
+          : "Unable to delete the selected photos."
+      );
+    } finally {
+      setBulkBusy(
+        false
+      );
+    }
   }
 
 
@@ -510,8 +1174,6 @@ export default function TripPhotoGallery({
     );
 
 
-    // Remove metadata first so the gallery never keeps a
-    // record pointing at an image the user can no longer see.
     const {
       data,
       error:
@@ -554,9 +1216,6 @@ export default function TripPhotoGallery({
     }
 
 
-    // The database record is already gone. If Storage
-    // cleanup fails, the inaccessible orphan is logged
-    // rather than restoring stale gallery metadata.
     const {
       error:
         storageError,
@@ -709,8 +1368,7 @@ export default function TripPhotoGallery({
                     event
                   ) =>
                     setDayFilter(
-                      event.target
-                        .value
+                      event.target.value
                     )
                   }
                   className="w-full rounded-xl border border-line bg-surface-soft px-3 py-2 text-sm text-ink"
@@ -724,9 +1382,7 @@ export default function TripPhotoGallery({
                   </option>
 
                   {dayOptions.map(
-                    (
-                      option
-                    ) => (
+                    (option) => (
                       <option
                         key={
                           option.value
@@ -762,8 +1418,7 @@ export default function TripPhotoGallery({
                     event
                   ) =>
                     setPlaceFilter(
-                      event.target
-                        .value
+                      event.target.value
                     )
                   }
                   className="w-full rounded-xl border border-line bg-surface-soft px-3 py-2 text-sm text-ink"
@@ -777,9 +1432,7 @@ export default function TripPhotoGallery({
                   </option>
 
                   {placeOptions.map(
-                    (
-                      place
-                    ) => (
+                    (place) => (
                       <option
                         key={
                           place.id
@@ -813,21 +1466,162 @@ export default function TripPhotoGallery({
       </div>
 
 
-      {/* Gallery summary */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted">
-          {
-            visiblePhotos.length
-          }{" "}
-          {visiblePhotos.length ===
-          1
-            ? "photo"
-            : "photos"}
-          {visiblePhotos.length !==
-            photos.length &&
-            ` of ${photos.length}`}
-        </p>
+      {/* Gallery selection toolbar */}
+      <div className="mb-4 rounded-xl border border-line bg-surface p-3 sm:p-4">
+        {!selectionMode ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted">
+              {
+                visiblePhotos.length
+              }{" "}
+              {visiblePhotos.length ===
+              1
+                ? "photo"
+                : "photos"}
+              {visiblePhotos.length !==
+                photos.length &&
+                ` of ${photos.length}`}
+            </p>
+
+            <button
+              type="button"
+              onClick={
+                startSelectionMode
+              }
+              className="cursor-pointer rounded-xl border border-line bg-surface-soft px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-hover"
+            >
+              Select
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-medium text-ink">
+                {
+                  selectedIds.size
+                }{" "}
+                {selectedIds.size ===
+                1
+                  ? "photo selected"
+                  : "photos selected"}
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={
+                    bulkBusy
+                  }
+                  onClick={
+                    selectAllVisible
+                  }
+                  className="cursor-pointer rounded-lg border border-line bg-surface-soft px-3 py-2 text-xs font-medium text-ink transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Select visible
+                </button>
+
+                {selectedIds.size >
+                  0 && (
+                  <button
+                    type="button"
+                    disabled={
+                      bulkBusy
+                    }
+                    onClick={
+                      clearSelection
+                    }
+                    className="cursor-pointer rounded-lg border border-line bg-surface-soft px-3 py-2 text-xs font-medium text-muted transition hover:bg-surface-hover hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Clear
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  disabled={
+                    bulkBusy
+                  }
+                  onClick={
+                    exitSelectionMode
+                  }
+                  className="cursor-pointer rounded-lg px-3 py-2 text-xs font-medium text-muted transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+
+            {selectedIds.size >
+              0 && (
+              <div className="flex flex-wrap gap-2 border-t border-line pt-3">
+                <button
+                  type="button"
+                  disabled={
+                    bulkBusy
+                  }
+                  onClick={() =>
+                    savePhotos(
+                      selectedPhotos
+                    )
+                  }
+                  className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {bulkBusy
+                    ? "Preparing..."
+                    : selectedIds.size ===
+                        1
+                      ? "Save photo"
+                      : `Save ${selectedIds.size} photos`}
+                </button>
+
+
+                {isTripCreator && (
+                  <button
+                    type="button"
+                    disabled={
+                      bulkBusy
+                    }
+                    onClick={
+                      deleteSelectedPhotos
+                    }
+                    className="cursor-pointer rounded-xl border border-danger-border bg-danger-surface px-4 py-2.5 text-sm font-medium text-danger-text transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {selectedIds.size ===
+                    1
+                      ? "Delete photo"
+                      : `Delete ${selectedIds.size} photos`}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+
+      {galleryMessage && (
+        <div
+          role="status"
+          className="mb-4 rounded-xl border border-success-border bg-success-surface px-4 py-3 text-sm text-success-text"
+        >
+          {
+            galleryMessage
+          }
+        </div>
+      )}
+
+
+      {galleryError && (
+        <div
+          role="alert"
+          className="mb-4 rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-text"
+        >
+          {
+            galleryError
+          }
+        </div>
+      )}
 
 
       {visiblePhotos.length ===
@@ -854,95 +1648,157 @@ export default function TripPhotoGallery({
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {visiblePhotos.map(
-            (photo) => (
-              <article
-                key={
+            (photo) => {
+              const checked =
+                selectedIds.has(
                   photo.id
-                }
-                className="min-w-0 overflow-hidden rounded-2xl border border-line bg-surface"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSelectedPhotoId(
-                      photo.id
-                    )
+                );
+
+              return (
+                <article
+                  key={
+                    photo.id
                   }
-                  className="group/photo block w-full cursor-pointer overflow-hidden bg-surface-soft text-left"
-                  aria-label={`Open photo uploaded by ${photo.uploaderName}`}
+                  className={`relative min-w-0 overflow-hidden rounded-2xl border bg-surface transition ${
+                    checked
+                      ? "border-brand-500 ring-2 ring-brand-100"
+                      : "border-line"
+                  }`}
                 >
-                  <div className="aspect-square overflow-hidden">
-                    {photo.imageUrl ? (
-                      // Private signed URLs are dynamic.
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={
-                          photo.imageUrl
-                        }
-                        alt={
-                          photo.caption ??
-                          `Trip photo uploaded by ${photo.uploaderName}`
-                        }
-                        loading="lazy"
-                        className="h-full w-full object-cover transition duration-300 group-hover/photo:scale-[1.02]"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted">
-                        Image unavailable
-                      </div>
-                    )}
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        selectionMode
+                      ) {
+                        togglePhotoSelection(
+                          photo.id
+                        );
 
-
-                <div className="p-3">
-                  {photo.caption && (
-                    <p className="line-clamp-2 text-sm font-medium leading-5 text-ink">
-                      {
-                        photo.caption
+                        return;
                       }
-                    </p>
-                  )}
 
-                  <div className={`${photo.caption ? "mt-2" : ""} flex flex-wrap gap-1.5`}>
-                    {photo.photoDate && (
-                      <span className="rounded-full border border-line bg-surface-soft px-2 py-1 text-[11px] text-muted">
-                        {formatTripPhotoDate(
-                          photo.photoDate
-                        )}
-                      </span>
+                      setSelectedPhotoId(
+                        photo.id
+                      );
+                    }}
+                    className="group/photo relative block w-full cursor-pointer overflow-hidden bg-surface-soft text-left"
+                    aria-label={
+                      selectionMode
+                        ? checked
+                          ? `Deselect photo uploaded by ${photo.uploaderName}`
+                          : `Select photo uploaded by ${photo.uploaderName}`
+                        : `Open photo uploaded by ${photo.uploaderName}`
+                    }
+                    aria-pressed={
+                      selectionMode
+                        ? checked
+                        : undefined
+                    }
+                  >
+                    <div className="aspect-square overflow-hidden">
+                      {photo.imageUrl ? (
+                        // Private signed URLs are dynamic.
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={
+                            photo.imageUrl
+                          }
+                          alt={
+                            photo.caption ??
+                            `Trip photo uploaded by ${photo.uploaderName}`
+                          }
+                          loading="lazy"
+                          className={`h-full w-full object-cover transition duration-300 ${
+                            selectionMode
+                              ? ""
+                              : "group-hover/photo:scale-[1.02]"
+                          }`}
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted">
+                          Image unavailable
+                        </div>
+                      )}
+                    </div>
+
+
+                    {selectionMode && (
+                      <>
+                        <div
+                          className={`absolute inset-0 transition ${
+                            checked
+                              ? "bg-brand-600/15"
+                              : "bg-black/5"
+                          }`}
+                        />
+
+                        <span
+                          className={`absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border-2 text-sm font-bold shadow-sm ${
+                            checked
+                              ? "border-brand-600 bg-brand-600 text-brand-contrast"
+                              : "border-white bg-black/45 text-transparent"
+                          }`}
+                          aria-hidden="true"
+                        >
+                          ✓
+                        </span>
+                      </>
                     )}
+                  </button>
 
-                    {photo.placeName && (
-                      <span className="max-w-full truncate rounded-full border border-line bg-surface-soft px-2 py-1 text-[11px] text-muted">
+
+                  <div className="p-3">
+                    {photo.caption && (
+                      <p className="line-clamp-2 text-sm font-medium leading-5 text-ink">
                         {
-                          photo.placeName
+                          photo.caption
                         }
-                      </span>
+                      </p>
                     )}
+
+                    <div
+                      className={`${photo.caption ? "mt-2" : ""} flex flex-wrap gap-1.5`}
+                    >
+                      {photo.photoDate && (
+                        <span className="rounded-full border border-line bg-surface-soft px-2 py-1 text-[11px] text-muted">
+                          {formatTripPhotoDate(
+                            photo.photoDate
+                          )}
+                        </span>
+                      )}
+
+                      {photo.placeName && (
+                        <span className="max-w-full truncate rounded-full border border-line bg-surface-soft px-2 py-1 text-[11px] text-muted">
+                          {
+                            photo.placeName
+                          }
+                        </span>
+                      )}
+                    </div>
+
+
+                    <div className="mt-3 flex items-center gap-2">
+                      <Avatar
+                        src={
+                          photo.uploaderAvatarUrl
+                        }
+                        displayName={
+                          photo.uploaderName
+                        }
+                        size="xs"
+                      />
+
+                      <p className="min-w-0 truncate text-xs text-subtle">
+                        {
+                          photo.uploaderName
+                        }
+                      </p>
+                    </div>
                   </div>
-
-
-                  <div className="mt-3 flex items-center gap-2">
-                    <Avatar
-                      src={
-                        photo.uploaderAvatarUrl
-                      }
-                      displayName={
-                        photo.uploaderName
-                      }
-                      size="xs"
-                    />
-
-                    <p className="min-w-0 truncate text-xs text-subtle">
-                      {
-                        photo.uploaderName
-                      }
-                    </p>
-                  </div>
-                </div>
-              </article>
-            )
+                </article>
+              );
+            }
           )}
         </div>
       )}
@@ -968,11 +1824,13 @@ export default function TripPhotoGallery({
         >
           <div className="mx-auto flex min-h-full max-w-6xl items-center justify-center">
             <div className="relative w-full overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl">
+
               {/* Close */}
               <button
                 type="button"
                 disabled={
-                  saving
+                  saving ||
+                  bulkBusy
                 }
                 onClick={
                   closeLightbox
@@ -985,6 +1843,7 @@ export default function TripPhotoGallery({
 
 
               <div className="grid lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.7fr)]">
+
                 {/* Image */}
                 <div className="relative flex min-h-[320px] items-center justify-center bg-black/90 lg:min-h-[650px]">
                   {selectedPhoto.imageUrl ? (
@@ -1069,6 +1928,27 @@ export default function TripPhotoGallery({
                   </div>
 
 
+                  {/* Everyone with gallery access can save
+                      a single photo from the lightbox. */}
+                  <button
+                    type="button"
+                    disabled={
+                      bulkBusy ||
+                      !selectedPhoto.imageUrl
+                    }
+                    onClick={() =>
+                      savePhotos([
+                        selectedPhoto,
+                      ])
+                    }
+                    className="mt-5 cursor-pointer rounded-xl border border-line bg-surface-soft px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {bulkBusy
+                      ? "Preparing..."
+                      : "Save photo"}
+                  </button>
+
+
                   {selectedPhoto.canEdit ? (
                     <div className="mt-6 space-y-5">
                       <div>
@@ -1088,8 +1968,7 @@ export default function TripPhotoGallery({
                             event
                           ) =>
                             setEditCaption(
-                              event.target
-                                .value
+                              event.target.value
                             )
                           }
                           maxLength={
@@ -1131,8 +2010,7 @@ export default function TripPhotoGallery({
                             event
                           ) =>
                             setEditDate(
-                              event.target
-                                .value
+                              event.target.value
                             )
                           }
                           disabled={
@@ -1145,9 +2023,7 @@ export default function TripPhotoGallery({
                           </option>
 
                           {dayOptions.map(
-                            (
-                              option
-                            ) => (
+                            (option) => (
                               <option
                                 key={
                                   option.value
@@ -1183,8 +2059,7 @@ export default function TripPhotoGallery({
                             event
                           ) =>
                             setEditPlaceId(
-                              event.target
-                                .value
+                              event.target.value
                             )
                           }
                           disabled={
@@ -1197,9 +2072,7 @@ export default function TripPhotoGallery({
                           </option>
 
                           {placeOptions.map(
-                            (
-                              place
-                            ) => (
+                            (place) => (
                               <option
                                 key={
                                   place.id
