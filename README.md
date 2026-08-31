@@ -12,7 +12,8 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Group overviews with current/upcoming trips and recent planning activity
 - Day-by-day itineraries with activities, transport, and accommodation
 - Drag-and-drop itinerary ordering and schedule conflict detection
-- Group suggestions, voting, and discussion threads
+- Group suggestions, voting, and threaded discussion replies
+- Discussion reply notifications and per-suggestion unread indicators
 - Suggestion acceptance, rejection, and archiving
 - Saved places and location discovery
 - Interactive trip maps with day, category, and planning-status filtering
@@ -68,6 +69,8 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Secure database access using PostgreSQL Row Level Security
 - Real-time updates across shared trip data
 - Event-driven activity and notification system using PostgreSQL triggers
+- Threaded voting discussions with database-enforced one-level reply depth
+- Per-user discussion read state and exact notification deep links
 - Responsive, mobile-first interface
 - URL-backed trip and group searching and filtering
 - Persistent user theme preferences
