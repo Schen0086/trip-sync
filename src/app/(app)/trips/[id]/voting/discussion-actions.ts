@@ -1,17 +1,35 @@
 "use server";
 
-import {
-  revalidatePath,
-} from "next/cache";
-
+import { revalidatePath } from "next/cache";
 import {
   redirect,
   RedirectType,
 } from "next/navigation";
 
-import {
-  createClient,
-} from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+
+
+type SupabaseServerClient =
+  Awaited<
+    ReturnType<
+      typeof createClient
+    >
+  >;
+
+
+type DiscussionFormValues = {
+  tripId: string;
+  itemId: string;
+};
+
+
+type OwnedComment = {
+  id: string;
+  author_user_id: string;
+  parent_comment_id:
+    | string
+    | null;
+};
 
 
 const MAX_COMMENT_LENGTH =
@@ -23,13 +41,10 @@ function getText(
   name: string
 ) {
   return (
-    (
-      formData.get(
-        name
-      ) as
-        | string
-        | null
-    )?.trim() ?? ""
+    formData
+      .get(name)
+      ?.toString()
+      .trim() ?? ""
   );
 }
 
@@ -55,12 +70,10 @@ function discussionError(
     );
   }
 
-
   const anchor =
     itemId
       ? `#item-${itemId}`
       : "";
-
 
   replaceRedirect(
     `/trips/${tripId}/voting?error=${encodeURIComponent(
@@ -76,57 +89,79 @@ function refreshDiscussionViews(
   revalidatePath(
     `/trips/${tripId}`
   );
-
   revalidatePath(
     `/trips/${tripId}/voting`
   );
-
   revalidatePath(
     `/trips/${tripId}/activity`
+  );
+  revalidatePath(
+    "/notifications"
   );
 }
 
 
-function validateCommentContent(
-  content: string
+function validateContent(
+  content: string,
+  label: "Comment" | "Reply"
 ) {
-  if (
-    content.length < 1
-  ) {
-    return "Comment cannot be empty";
+  if (content.length < 1) {
+    return `${label} cannot be empty`;
   }
-
 
   if (
     content.length >
     MAX_COMMENT_LENGTH
   ) {
-    return `Comment cannot be longer than ${MAX_COMMENT_LENGTH} characters`;
+    return `${label} cannot be longer than ${MAX_COMMENT_LENGTH} characters`;
   }
-
 
   return null;
 }
 
 
-export async function createSuggestionComment(
-  formData: FormData
+function getDiscussionFormValues(
+  formData: FormData,
+  invalidMessage =
+    "Invalid discussion"
+): DiscussionFormValues {
+  const tripId =
+    getText(
+      formData,
+      "tripId"
+    );
+  const itemId =
+    getText(
+      formData,
+      "itemId"
+    );
+
+  if (!tripId || !itemId) {
+    discussionError(
+      tripId,
+      itemId,
+      invalidMessage
+    );
+  }
+
+  return {
+    tripId,
+    itemId,
+  };
+}
+
+
+async function requireUserId(
+  supabase: SupabaseServerClient
 ) {
-  const supabase =
-    await createClient();
-
-
-  // Authentication
   const {
     data,
-    error:
-      authError,
+    error,
   } =
     await supabase.auth.getClaims();
 
-
   if (
-    authError ||
+    error ||
     !data?.claims
   ) {
     replaceRedirect(
@@ -134,90 +169,39 @@ export async function createSuggestionComment(
     );
   }
 
-
-  const userId =
-    data.claims.sub;
-
-
-  const tripId =
-    getText(
-      formData,
-      "tripId"
-    );
-
-  const itemId =
-    getText(
-      formData,
-      "itemId"
-    );
-
-  const content =
-    getText(
-      formData,
-      "content"
-    );
+  return data.claims.sub;
+}
 
 
-  if (
-    !tripId ||
-    !itemId
-  ) {
-    discussionError(
-      tripId,
-      itemId,
-      "Invalid discussion"
-    );
-  }
-
-
-  const contentError =
-    validateCommentContent(
-      content
-    );
-
-
-  if (contentError) {
-    discussionError(
-      tripId,
-      itemId,
-      contentError
-    );
-  }
-
-
-  // Confirm that this is still an open
-  // suggestion before attempting the insert.
+async function assertOpenSuggestion(
+  supabase: SupabaseServerClient,
+  tripId: string,
+  itemId: string
+) {
   const {
-    data:
-      suggestion,
-    error:
-      suggestionError,
-  } = await supabase
-    .from(
-      "itinerary_items"
-    )
-    .select(`
-      id,
-      origin,
-      planning_status
-    `)
-    .eq(
-      "id",
-      itemId
-    )
-    .eq(
-      "trip_id",
-      tripId
-    )
-    .maybeSingle();
+    data: suggestion,
+    error,
+  } =
+    await supabase
+      .from(
+        "itinerary_items"
+      )
+      .select(`
+        id,
+        origin,
+        planning_status
+      `)
+      .eq("id", itemId)
+      .eq(
+        "trip_id",
+        tripId
+      )
+      .maybeSingle();
 
-
-  if (
-    suggestionError
-  ) {
+  if (error) {
     console.error(
-      "Failed to load suggestion before commenting:",
-      suggestionError
+      "Failed to load suggestion discussion:",
+      error
     );
 
     discussionError(
@@ -226,7 +210,6 @@ export async function createSuggestionComment(
       "Unable to open this discussion"
     );
   }
-
 
   if (
     !suggestion ||
@@ -240,7 +223,6 @@ export async function createSuggestionComment(
     );
   }
 
-
   if (
     suggestion.planning_status !==
       "suggested"
@@ -251,53 +233,156 @@ export async function createSuggestionComment(
       "This discussion is closed because the suggestion is no longer open for voting"
     );
   }
+}
 
 
-  // Insert the comment.
+async function getOwnedComment(
+  supabase: SupabaseServerClient,
+  {
+    tripId,
+    itemId,
+  }: DiscussionFormValues,
+  commentId: string,
+  userId: string
+): Promise<OwnedComment> {
   const {
-    data:
-      insertedComment,
-    error:
-      insertError,
-  } = await supabase
-    .from(
-      "suggestion_comments"
-    )
-    .insert({
-      trip_id:
-        tripId,
+    data: comment,
+    error,
+  } =
+    await supabase
+      .from(
+        "suggestion_comments"
+      )
+      .select(`
+        id,
+        author_user_id,
+        parent_comment_id
+      `)
+      .eq("id", commentId)
+      .eq(
+        "trip_id",
+        tripId
+      )
+      .eq(
+        "item_id",
+        itemId
+      )
+      .maybeSingle();
 
-      item_id:
-        itemId,
+  if (error) {
+    console.error(
+      "Failed to load suggestion comment:",
+      error
+    );
 
-      author_user_id:
-        userId,
+    discussionError(
+      tripId,
+      itemId,
+      "Unable to load comment"
+    );
+  }
 
-      content,
-    })
-    .select(
-      "id"
-    )
-    .maybeSingle();
-
+  if (!comment) {
+    discussionError(
+      tripId,
+      itemId,
+      "Comment not found"
+    );
+  }
 
   if (
-    insertError ||
+    comment.author_user_id !==
+      userId
+  ) {
+    discussionError(
+      tripId,
+      itemId,
+      "You can only change your own comments"
+    );
+  }
+
+  return comment;
+}
+
+
+export async function createSuggestionComment(
+  formData: FormData
+) {
+  const supabase =
+    await createClient();
+  const userId =
+    await requireUserId(
+      supabase
+    );
+
+  const {
+    tripId,
+    itemId,
+  } =
+    getDiscussionFormValues(
+      formData
+    );
+  const content =
+    getText(
+      formData,
+      "content"
+    );
+
+  const contentError =
+    validateContent(
+      content,
+      "Comment"
+    );
+
+  if (contentError) {
+    discussionError(
+      tripId,
+      itemId,
+      contentError
+    );
+  }
+
+  await assertOpenSuggestion(
+    supabase,
+    tripId,
+    itemId
+  );
+
+  const {
+    data: insertedComment,
+    error,
+  } =
+    await supabase
+      .from(
+        "suggestion_comments"
+      )
+      .insert({
+        trip_id: tripId,
+        item_id: itemId,
+        author_user_id:
+          userId,
+        parent_comment_id:
+          null,
+        content,
+      })
+      .select("id")
+      .maybeSingle();
+
+  if (
+    error ||
     !insertedComment
   ) {
     console.error(
       "Failed to create suggestion comment:",
-      insertError
+      error
     );
 
-
     const message =
-      insertError?.message.includes(
+      error?.message.includes(
         "SUGGESTION_DISCUSSION_CLOSED"
       )
         ? "This discussion is closed because the suggestion is no longer open for voting"
         : "Unable to post comment";
-
 
     discussionError(
       tripId,
@@ -306,6 +391,180 @@ export async function createSuggestionComment(
     );
   }
 
+  refreshDiscussionViews(
+    tripId
+  );
+}
+
+
+export async function createSuggestionReply(
+  formData: FormData
+) {
+  const supabase =
+    await createClient();
+  const userId =
+    await requireUserId(
+      supabase
+    );
+
+  const {
+    tripId,
+    itemId,
+  } =
+    getDiscussionFormValues(
+      formData,
+      "Invalid reply"
+    );
+  const parentCommentId =
+    getText(
+      formData,
+      "parentCommentId"
+    );
+  const content =
+    getText(
+      formData,
+      "content"
+    );
+
+  if (!parentCommentId) {
+    discussionError(
+      tripId,
+      itemId,
+      "Invalid reply"
+    );
+  }
+
+  const contentError =
+    validateContent(
+      content,
+      "Reply"
+    );
+
+  if (contentError) {
+    discussionError(
+      tripId,
+      itemId,
+      contentError
+    );
+  }
+
+  const {
+    data: parentComment,
+    error: parentError,
+  } =
+    await supabase
+      .from(
+        "suggestion_comments"
+      )
+      .select(`
+        id,
+        parent_comment_id
+      `)
+      .eq(
+        "id",
+        parentCommentId
+      )
+      .eq(
+        "trip_id",
+        tripId
+      )
+      .eq(
+        "item_id",
+        itemId
+      )
+      .maybeSingle();
+
+  if (parentError) {
+    console.error(
+      "Failed to load reply target:",
+      parentError
+    );
+
+    discussionError(
+      tripId,
+      itemId,
+      "Unable to reply to this comment"
+    );
+  }
+
+  if (!parentComment) {
+    discussionError(
+      tripId,
+      itemId,
+      "Comment not found"
+    );
+  }
+
+  if (
+    parentComment.parent_comment_id
+  ) {
+    discussionError(
+      tripId,
+      itemId,
+      "Replies can only be added to main comments"
+    );
+  }
+
+  await assertOpenSuggestion(
+    supabase,
+    tripId,
+    itemId
+  );
+
+  const {
+    data: insertedReply,
+    error,
+  } =
+    await supabase
+      .from(
+        "suggestion_comments"
+      )
+      .insert({
+        trip_id: tripId,
+        item_id: itemId,
+        author_user_id:
+          userId,
+        parent_comment_id:
+          parentCommentId,
+        content,
+      })
+      .select("id")
+      .maybeSingle();
+
+  if (
+    error ||
+    !insertedReply
+  ) {
+    console.error(
+      "Failed to create suggestion reply:",
+      error
+    );
+
+    let message =
+      "Unable to post reply";
+
+    if (
+      error?.message.includes(
+        "SUGGESTION_DISCUSSION_CLOSED"
+      )
+    ) {
+      message =
+        "This discussion is closed because the suggestion is no longer open for voting";
+    } else if (
+      error?.message.includes(
+        "SUGGESTION_REPLY_DEPTH_EXCEEDED"
+      )
+    ) {
+      message =
+        "Replies can only be added to main comments";
+    }
+
+    discussionError(
+      tripId,
+      itemId,
+      message
+    );
+  }
 
   refreshDiscussionViews(
     tripId
@@ -318,61 +577,32 @@ export async function updateSuggestionComment(
 ) {
   const supabase =
     await createClient();
-
-
-  // Authentication
-  const {
-    data,
-    error:
-      authError,
-  } =
-    await supabase.auth.getClaims();
-
-
-  if (
-    authError ||
-    !data?.claims
-  ) {
-    replaceRedirect(
-      "/login"
-    );
-  }
-
-
   const userId =
-    data.claims.sub;
-
-
-  const tripId =
-    getText(
-      formData,
-      "tripId"
+    await requireUserId(
+      supabase
     );
 
-  const itemId =
-    getText(
+  const context =
+    getDiscussionFormValues(
       formData,
-      "itemId"
+      "Invalid comment"
     );
-
+  const {
+    tripId,
+    itemId,
+  } = context;
   const commentId =
     getText(
       formData,
       "commentId"
     );
-
   const content =
     getText(
       formData,
       "content"
     );
 
-
-  if (
-    !tripId ||
-    !itemId ||
-    !commentId
-  ) {
+  if (!commentId) {
     discussionError(
       tripId,
       itemId,
@@ -380,12 +610,11 @@ export async function updateSuggestionComment(
     );
   }
 
-
   const contentError =
-    validateCommentContent(
-      content
+    validateContent(
+      content,
+      "Comment"
     );
-
 
   if (contentError) {
     discussionError(
@@ -395,112 +624,43 @@ export async function updateSuggestionComment(
     );
   }
 
+  await assertOpenSuggestion(
+    supabase,
+    tripId,
+    itemId
+  );
+  await getOwnedComment(
+    supabase,
+    context,
+    commentId,
+    userId
+  );
 
-  // Confirm ownership before updating.
   const {
-    data:
-      comment,
-    error:
-      commentError,
-  } = await supabase
-    .from(
-      "suggestion_comments"
-    )
-    .select(`
-      id,
-      trip_id,
-      item_id,
-      author_user_id
-    `)
-    .eq(
-      "id",
-      commentId
-    )
-    .eq(
-      "trip_id",
-      tripId
-    )
-    .eq(
-      "item_id",
-      itemId
-    )
-    .maybeSingle();
-
+    data: updatedComment,
+    error,
+  } =
+    await supabase
+      .from(
+        "suggestion_comments"
+      )
+      .update({ content })
+      .eq("id", commentId)
+      .eq(
+        "author_user_id",
+        userId
+      )
+      .select("id")
+      .maybeSingle();
 
   if (
-    commentError
-  ) {
-    console.error(
-      "Failed to load suggestion comment:",
-      commentError
-    );
-
-    discussionError(
-      tripId,
-      itemId,
-      "Unable to load comment"
-    );
-  }
-
-
-  if (!comment) {
-    discussionError(
-      tripId,
-      itemId,
-      "Comment not found"
-    );
-  }
-
-
-  if (
-    comment.author_user_id !==
-      userId
-  ) {
-    discussionError(
-      tripId,
-      itemId,
-      "You can only edit your own comments"
-    );
-  }
-
-
-  // RLS also verifies that the suggestion is
-  // still open for voting.
-  const {
-    data:
-      updatedComment,
-    error:
-      updateError,
-  } = await supabase
-    .from(
-      "suggestion_comments"
-    )
-    .update({
-      content,
-    })
-    .eq(
-      "id",
-      commentId
-    )
-    .eq(
-      "author_user_id",
-      userId
-    )
-    .select(
-      "id"
-    )
-    .maybeSingle();
-
-
-  if (
-    updateError ||
+    error ||
     !updatedComment
   ) {
     console.error(
       "Failed to update suggestion comment:",
-      updateError
+      error
     );
-
 
     discussionError(
       tripId,
@@ -509,67 +669,38 @@ export async function updateSuggestionComment(
     );
   }
 
-
   refreshDiscussionViews(
     tripId
   );
 }
 
 
-export async function deleteSuggestionComment(
+export async function deleteSuggestionCommentSafely(
   formData: FormData
 ) {
   const supabase =
     await createClient();
-
-
-  // Authentication
-  const {
-    data,
-    error:
-      authError,
-  } =
-    await supabase.auth.getClaims();
-
-
-  if (
-    authError ||
-    !data?.claims
-  ) {
-    replaceRedirect(
-      "/login"
-    );
-  }
-
-
   const userId =
-    data.claims.sub;
-
-
-  const tripId =
-    getText(
-      formData,
-      "tripId"
+    await requireUserId(
+      supabase
     );
 
-  const itemId =
-    getText(
+  const context =
+    getDiscussionFormValues(
       formData,
-      "itemId"
+      "Invalid comment"
     );
-
+  const {
+    tripId,
+    itemId,
+  } = context;
   const commentId =
     getText(
       formData,
       "commentId"
     );
 
-
-  if (
-    !tripId ||
-    !itemId ||
-    !commentId
-  ) {
+  if (!commentId) {
     discussionError(
       tripId,
       itemId,
@@ -577,110 +708,92 @@ export async function deleteSuggestionComment(
     );
   }
 
+  await assertOpenSuggestion(
+    supabase,
+    tripId,
+    itemId
+  );
 
-  // Confirm ownership.
-  const {
-    data:
-      comment,
-    error:
-      commentError,
-  } = await supabase
-    .from(
-      "suggestion_comments"
-    )
-    .select(`
-      id,
-      trip_id,
-      item_id,
-      author_user_id
-    `)
-    .eq(
-      "id",
-      commentId
-    )
-    .eq(
-      "trip_id",
-      tripId
-    )
-    .eq(
-      "item_id",
-      itemId
-    )
-    .maybeSingle();
-
-
-  if (
-    commentError
-  ) {
-    console.error(
-      "Failed to load suggestion comment before deletion:",
-      commentError
-    );
-
-    discussionError(
-      tripId,
-      itemId,
-      "Unable to load comment"
-    );
-  }
-
-
-  if (!comment) {
-    discussionError(
-      tripId,
-      itemId,
-      "Comment not found"
-    );
-  }
-
-
-  if (
-    comment.author_user_id !==
+  const comment =
+    await getOwnedComment(
+      supabase,
+      context,
+      commentId,
       userId
-  ) {
-    discussionError(
-      tripId,
-      itemId,
-      "You can only delete your own comments"
     );
-  }
-
-
-  // RLS also requires the suggestion to
-  // remain open for voting.
-  const {
-    data:
-      deletedComment,
-    error:
-      deleteError,
-  } = await supabase
-    .from(
-      "suggestion_comments"
-    )
-    .delete()
-    .eq(
-      "id",
-      commentId
-    )
-    .eq(
-      "author_user_id",
-      userId
-    )
-    .select(
-      "id"
-    )
-    .maybeSingle();
-
 
   if (
-    deleteError ||
+    !comment.parent_comment_id
+  ) {
+    const {
+      count: replyCount,
+      error: countError,
+    } =
+      await supabase
+        .from(
+          "suggestion_comments"
+        )
+        .select(
+          "id",
+          {
+            count: "exact",
+            head: true,
+          }
+        )
+        .eq(
+          "parent_comment_id",
+          commentId
+        );
+
+    if (countError) {
+      console.error(
+        "Failed to count comment replies:",
+        countError
+      );
+
+      discussionError(
+        tripId,
+        itemId,
+        "Unable to delete comment"
+      );
+    }
+
+    if (
+      (replyCount ?? 0) > 0
+    ) {
+      discussionError(
+        tripId,
+        itemId,
+        "This comment has replies and cannot be deleted"
+      );
+    }
+  }
+
+  const {
+    data: deletedComment,
+    error,
+  } =
+    await supabase
+      .from(
+        "suggestion_comments"
+      )
+      .delete()
+      .eq("id", commentId)
+      .eq(
+        "author_user_id",
+        userId
+      )
+      .select("id")
+      .maybeSingle();
+
+  if (
+    error ||
     !deletedComment
   ) {
     console.error(
       "Failed to delete suggestion comment:",
-      deleteError
+      error
     );
-
 
     discussionError(
       tripId,
@@ -689,8 +802,20 @@ export async function deleteSuggestionComment(
     );
   }
 
-
   refreshDiscussionViews(
     tripId
+  );
+}
+
+
+/**
+ * Compatibility export for any older call sites that still import the
+ * original delete action name. New discussion UI should use the safe action.
+ */
+export async function deleteSuggestionComment(
+  formData: FormData
+) {
+  await deleteSuggestionCommentSafely(
+    formData
   );
 }

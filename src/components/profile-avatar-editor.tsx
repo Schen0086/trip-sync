@@ -6,65 +6,28 @@ import {
   useRef,
   useState,
 } from "react";
-
-import {
-  useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import Avatar from "@/components/avatar";
-
+import { createBrowserUuid } from "@/lib/browser-uuid";
 import {
-  createBrowserUuid,
-} from "@/lib/browser-uuid";
-
-import {
-  createClient,
-} from "@/lib/supabase/client";
+  IMAGE_ACCEPT,
+  getErrorMessage,
+  getImageExtension,
+  validateImageFile,
+} from "@/lib/images";
+import { createClient } from "@/lib/supabase/client";
 
 
 type ProfileAvatarEditorProps = {
   userId: string;
-
   displayName: string;
-
-  initialAvatarUrl:
-    | string
-    | null;
+  initialAvatarUrl: string | null;
 };
 
 
-const MAX_FILE_SIZE =
-  5 * 1024 * 1024;
-
-
-const ALLOWED_TYPES =
-  new Set([
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ]);
-
-
-function getExtension(
-  mimeType: string
-) {
-  switch (mimeType) {
-    case "image/png":
-      return "png";
-
-    case "image/webp":
-      return "webp";
-
-    default:
-      return "jpg";
-  }
-}
-
-
 function getOwnAvatarPath(
-  avatarUrl:
-    | string
-    | null,
+  avatarUrl: string | null,
   userId: string
 ) {
   if (!avatarUrl) {
@@ -73,15 +36,10 @@ function getOwnAvatarPath(
 
   const marker =
     "/storage/v1/object/public/avatars/";
-
   const markerIndex =
-    avatarUrl.indexOf(
-      marker
-    );
+    avatarUrl.indexOf(marker);
 
-  if (
-    markerIndex === -1
-  ) {
+  if (markerIndex === -1) {
     return null;
   }
 
@@ -99,33 +57,14 @@ function getOwnAvatarPath(
         rawPath
       );
 
-    if (
-      !path.startsWith(
-        `${userId}/`
-      )
-    ) {
-      return null;
-    }
-
-    return path;
+    return path.startsWith(
+      `${userId}/`
+    )
+      ? path
+      : null;
   } catch {
     return null;
   }
-}
-
-
-function getErrorMessage(
-  error: unknown,
-  fallback: string
-) {
-  if (
-    error instanceof Error &&
-    error.message
-  ) {
-    return error.message;
-  }
-
-  return fallback;
 }
 
 
@@ -134,71 +73,47 @@ export default function ProfileAvatarEditor({
   displayName,
   initialAvatarUrl,
 }: ProfileAvatarEditorProps) {
-  const router =
-    useRouter();
-
-  const supabase =
-    createClient();
-
+  const router = useRouter();
+  const supabase = createClient();
   const inputRef =
     useRef<HTMLInputElement>(
       null
     );
 
-  const [
-    avatarUrl,
-    setAvatarUrl,
-  ] = useState<
-    string | null
-  >(
-    initialAvatarUrl
-  );
-
-  const [
-    selectedFile,
-    setSelectedFile,
-  ] = useState<
-    File | null
-  >(null);
-
-  const [
-    previewUrl,
-    setPreviewUrl,
-  ] = useState<
-    string | null
-  >(null);
-
-  const [
-    busy,
-    setBusy,
-  ] =
+  const [avatarUrl, setAvatarUrl] =
+    useState<string | null>(
+      initialAvatarUrl
+    );
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(
+      null
+    );
+  const [previewUrl, setPreviewUrl] =
+    useState<string | null>(
+      null
+    );
+  const [busy, setBusy] =
     useState(false);
-
-  const [
-    errorMessage,
-    setErrorMessage,
-  ] = useState<
-    string | null
-  >(null);
-
-  const [
-    successMessage,
-    setSuccessMessage,
-  ] = useState<
-    string | null
-  >(null);
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(
+      null
+    );
+  const [successMessage, setSuccessMessage] =
+    useState<string | null>(
+      null
+    );
 
 
-  // Build a temporary local preview
-  // whenever a new file is selected.
   useEffect(() => {
-    if (
-      !selectedFile
-    ) {
-      setPreviewUrl(
-        null
-      );
+    setAvatarUrl(
+      initialAvatarUrl
+    );
+  }, [initialAvatarUrl]);
 
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewUrl(null);
       return;
     }
 
@@ -216,105 +131,71 @@ export default function ProfileAvatarEditor({
         objectUrl
       );
     };
-  }, [
-    selectedFile,
-  ]);
+  }, [selectedFile]);
 
 
   function resetMessages() {
-    setErrorMessage(
-      null
-    );
+    setErrorMessage(null);
+    setSuccessMessage(null);
+  }
 
-    setSuccessMessage(
-      null
-    );
+
+  function clearSelection() {
+    setSelectedFile(null);
+
+    if (inputRef.current) {
+      inputRef.current.value =
+        "";
+    }
   }
 
 
   function handleFileChange(
-    event:
-      ChangeEvent<HTMLInputElement>
+    event: ChangeEvent<HTMLInputElement>
   ) {
     resetMessages();
 
     const file =
-      event.target
-        .files?.[0];
+      event.target.files?.[0];
 
     if (!file) {
       return;
     }
 
-    if (
-      !ALLOWED_TYPES.has(
-        file.type
-      )
-    ) {
-      setSelectedFile(
-        null
+    const validationError =
+      validateImageFile(
+        file,
+        {
+          sizeLabel:
+            "Profile picture",
+        }
       );
 
-      event.target.value =
-        "";
-
+    if (validationError) {
+      clearSelection();
       setErrorMessage(
-        "Choose a JPEG, PNG or WebP image."
+        validationError
       );
-
       return;
     }
 
-    if (
-      file.size >
-      MAX_FILE_SIZE
-    ) {
-      setSelectedFile(
-        null
-      );
-
-      event.target.value =
-        "";
-
-      setErrorMessage(
-        "Profile pictures must be 5 MB or smaller."
-      );
-
-      return;
-    }
-
-    setSelectedFile(
-      file
-    );
+    setSelectedFile(file);
   }
 
 
   async function handleUpload() {
-    if (
-      !selectedFile ||
-      busy
-    ) {
+    if (!selectedFile || busy) {
       return;
     }
 
-    const file =
-      selectedFile;
-
+    const file = selectedFile;
     resetMessages();
+    setBusy(true);
 
-    setBusy(
-      true
-    );
-
-    let newPath:
-      | string
-      | null = null;
-
-    let newFileUploaded =
-      false;
-
-    let profileSaved =
-      false;
+    let newPath: string | null =
+      null;
+    let newFileUploaded = false;
+    let profileSaved = false;
 
     try {
       const oldAvatarPath =
@@ -323,59 +204,37 @@ export default function ProfileAvatarEditor({
           userId
         );
 
-      const extension =
-        getExtension(
-          file.type
-        );
-
-      // Works on both HTTPS and the
-      // HTTP LAN address used for
-      // real-device local testing.
       newPath =
-        `${userId}/${createBrowserUuid()}.${extension}`;
+        `${userId}/${createBrowserUuid()}.${getImageExtension(
+          file.type
+        )}`;
 
-      const {
-        error:
-          uploadError,
-      } =
+      const { error: uploadError } =
         await supabase.storage
-          .from(
-            "avatars"
-          )
+          .from("avatars")
           .upload(
             newPath,
             file,
             {
               cacheControl:
                 "31536000",
-
               contentType:
                 file.type,
-
-              upsert:
-                false,
+              upsert: false,
             }
           );
 
-      if (
-        uploadError
-      ) {
+      if (uploadError) {
         throw new Error(
           uploadError.message
         );
       }
 
-      newFileUploaded =
-        true;
+      newFileUploaded = true;
 
-      const {
-        data:
-          publicUrlData,
-      } =
+      const { data: publicUrlData } =
         supabase.storage
-          .from(
-            "avatars"
-          )
+          .from("avatars")
           .getPublicUrl(
             newPath
           );
@@ -383,35 +242,20 @@ export default function ProfileAvatarEditor({
       const publicUrl =
         publicUrlData.publicUrl;
 
-      // The public profiles table
-      // remains TripSync's
-      // authoritative profile.
       const {
-        data:
-          updatedProfile,
-
-        error:
-          profileError,
+        data: updatedProfile,
+        error: profileError,
       } =
         await supabase
-          .from(
-            "profiles"
-          )
+          .from("profiles")
           .update({
             avatar_url:
               publicUrl,
-
             updated_at:
-              new Date()
-                .toISOString(),
+              new Date().toISOString(),
           })
-          .eq(
-            "id",
-            userId
-          )
-          .select(
-            "id"
-          )
+          .eq("id", userId)
+          .select("id")
           .maybeSingle();
 
       if (
@@ -424,55 +268,39 @@ export default function ProfileAvatarEditor({
         );
       }
 
-      profileSaved =
-        true;
+      profileSaved = true;
 
-      // Keep Supabase Auth metadata
-      // consistent with the public profile.
+      // Keep Auth metadata in sync, but do not fail the
+      // public profile update if metadata syncing fails.
       const {
-        error:
-          authMetadataError,
+        error: authMetadataError,
       } =
-        await supabase.auth
-          .updateUser({
-            data: {
-              avatar_url:
-                publicUrl,
-            },
-          });
+        await supabase.auth.updateUser({
+          data: {
+            avatar_url:
+              publicUrl,
+          },
+        });
 
-      if (
-        authMetadataError
-      ) {
+      if (authMetadataError) {
         console.error(
           "Failed to sync avatar to Auth metadata:",
           authMetadataError
         );
       }
 
-      // Delete the previous TripSync
-      // avatar only after the new
-      // profile URL is safely stored.
       if (
         oldAvatarPath &&
-        oldAvatarPath !==
-          newPath
+        oldAvatarPath !== newPath
       ) {
-        const {
-          error:
-            cleanupError,
-        } =
+        const { error: cleanupError } =
           await supabase.storage
-            .from(
-              "avatars"
-            )
+            .from("avatars")
             .remove([
               oldAvatarPath,
             ]);
 
-        if (
-          cleanupError
-        ) {
+        if (cleanupError) {
           console.error(
             "Failed to remove previous avatar:",
             cleanupError
@@ -480,25 +308,11 @@ export default function ProfileAvatarEditor({
         }
       }
 
-      setAvatarUrl(
-        publicUrl
-      );
-
-      setSelectedFile(
-        null
-      );
-
-      if (
-        inputRef.current
-      ) {
-        inputRef.current.value =
-          "";
-      }
-
+      setAvatarUrl(publicUrl);
+      clearSelection();
       setSuccessMessage(
         "Profile picture updated."
       );
-
       router.refresh();
     } catch (error) {
       console.error(
@@ -506,29 +320,17 @@ export default function ProfileAvatarEditor({
         error
       );
 
-      // If Storage succeeded but the
-      // profile update did not, avoid
-      // leaving an orphaned new image.
       if (
         newFileUploaded &&
         !profileSaved &&
         newPath
       ) {
-        const {
-          error:
-            cleanupError,
-        } =
+        const { error: cleanupError } =
           await supabase.storage
-            .from(
-              "avatars"
-            )
-            .remove([
-              newPath,
-            ]);
+            .from("avatars")
+            .remove([newPath]);
 
-        if (
-          cleanupError
-        ) {
+        if (cleanupError) {
           console.error(
             "Failed to clean up unsuccessful avatar upload:",
             cleanupError
@@ -543,29 +345,18 @@ export default function ProfileAvatarEditor({
         )
       );
     } finally {
-      // Always recover the UI,
-      // including unexpected Safari
-      // or browser-side exceptions.
-      setBusy(
-        false
-      );
+      setBusy(false);
     }
   }
 
 
   async function handleRemove() {
-    if (
-      !avatarUrl ||
-      busy
-    ) {
+    if (!avatarUrl || busy) {
       return;
     }
 
     resetMessages();
-
-    setBusy(
-      true
-    );
+    setBusy(true);
 
     try {
       const oldAvatarPath =
@@ -575,31 +366,18 @@ export default function ProfileAvatarEditor({
         );
 
       const {
-        data:
-          updatedProfile,
-
-        error:
-          profileError,
+        data: updatedProfile,
+        error: profileError,
       } =
         await supabase
-          .from(
-            "profiles"
-          )
+          .from("profiles")
           .update({
-            avatar_url:
-              null,
-
+            avatar_url: null,
             updated_at:
-              new Date()
-                .toISOString(),
+              new Date().toISOString(),
           })
-          .eq(
-            "id",
-            userId
-          )
-          .select(
-            "id"
-          )
+          .eq("id", userId)
+          .select("id")
           .maybeSingle();
 
       if (
@@ -613,44 +391,30 @@ export default function ProfileAvatarEditor({
       }
 
       const {
-        error:
-          authMetadataError,
+        error: authMetadataError,
       } =
-        await supabase.auth
-          .updateUser({
-            data: {
-              avatar_url:
-                null,
-            },
-          });
+        await supabase.auth.updateUser({
+          data: {
+            avatar_url: null,
+          },
+        });
 
-      if (
-        authMetadataError
-      ) {
+      if (authMetadataError) {
         console.error(
           "Failed to clear avatar Auth metadata:",
           authMetadataError
         );
       }
 
-      if (
-        oldAvatarPath
-      ) {
-        const {
-          error:
-            removeError,
-        } =
+      if (oldAvatarPath) {
+        const { error: removeError } =
           await supabase.storage
-            .from(
-              "avatars"
-            )
+            .from("avatars")
             .remove([
               oldAvatarPath,
             ]);
 
-        if (
-          removeError
-        ) {
+        if (removeError) {
           console.error(
             "Failed to remove avatar file:",
             removeError
@@ -658,25 +422,11 @@ export default function ProfileAvatarEditor({
         }
       }
 
-      setAvatarUrl(
-        null
-      );
-
-      setSelectedFile(
-        null
-      );
-
-      if (
-        inputRef.current
-      ) {
-        inputRef.current.value =
-          "";
-      }
-
+      setAvatarUrl(null);
+      clearSelection();
       setSuccessMessage(
         "Profile picture removed."
       );
-
       router.refresh();
     } catch (error) {
       console.error(
@@ -691,29 +441,20 @@ export default function ProfileAvatarEditor({
         )
       );
     } finally {
-      setBusy(
-        false
-      );
+      setBusy(false);
     }
   }
 
 
   const displayedAvatar =
-    previewUrl ??
-    avatarUrl;
-
+    previewUrl ?? avatarUrl;
 
   return (
     <div className="mt-7 rounded-2xl border border-line bg-surface-soft p-5">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-        {/* Avatar preview */}
         <Avatar
-          src={
-            displayedAvatar
-          }
-          displayName={
-            displayName
-          }
+          src={displayedAvatar}
+          displayName={displayName}
           size="xl"
         />
 
@@ -726,28 +467,20 @@ export default function ProfileAvatarEditor({
             Add a photo so friends can recognise you throughout TripSync.
           </p>
 
-          {/* Native device picker */}
           <input
-            ref={
-              inputRef
-            }
+            ref={inputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={
-              handleFileChange
-            }
+            accept={IMAGE_ACCEPT}
+            onChange={handleFileChange}
             className="sr-only"
           />
 
           <div className="mt-4 flex flex-wrap gap-3">
             <button
               type="button"
-              disabled={
-                busy
-              }
+              disabled={busy}
               onClick={() =>
-                inputRef.current
-                  ?.click()
+                inputRef.current?.click()
               }
               className="cursor-pointer rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -759,12 +492,8 @@ export default function ProfileAvatarEditor({
             {selectedFile && (
               <button
                 type="button"
-                disabled={
-                  busy
-                }
-                onClick={
-                  handleUpload
-                }
+                disabled={busy}
+                onClick={handleUpload}
                 className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {busy
@@ -777,12 +506,8 @@ export default function ProfileAvatarEditor({
               !selectedFile && (
                 <button
                   type="button"
-                  disabled={
-                    busy
-                  }
-                  onClick={
-                    handleRemove
-                  }
+                  disabled={busy}
+                  onClick={handleRemove}
                   className="cursor-pointer rounded-xl border border-danger-border bg-danger-surface px-4 py-2.5 text-sm font-medium text-danger-text disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {busy
@@ -795,29 +520,14 @@ export default function ProfileAvatarEditor({
           {selectedFile && (
             <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2">
               <p className="min-w-0 truncate text-xs text-muted">
-                {
-                  selectedFile.name ||
-                  "Selected photo"
-                }
+                {selectedFile.name ||
+                  "Selected photo"}
               </p>
 
               <button
                 type="button"
-                disabled={
-                  busy
-                }
-                onClick={() => {
-                  setSelectedFile(
-                    null
-                  );
-
-                  if (
-                    inputRef.current
-                  ) {
-                    inputRef.current.value =
-                      "";
-                  }
-                }}
+                disabled={busy}
+                onClick={clearSelection}
                 className="shrink-0 cursor-pointer text-xs font-medium text-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
@@ -825,7 +535,6 @@ export default function ProfileAvatarEditor({
             </div>
           )}
 
-          {/* Production-facing constraints only. */}
           <p className="mt-3 text-xs leading-5 text-subtle">
             JPEG, PNG or WebP. Maximum 5 MB.
           </p>
@@ -835,9 +544,7 @@ export default function ProfileAvatarEditor({
               role="alert"
               className="mt-3 text-sm text-danger-text"
             >
-              {
-                errorMessage
-              }
+              {errorMessage}
             </p>
           )}
 
@@ -846,9 +553,7 @@ export default function ProfileAvatarEditor({
               role="status"
               className="mt-3 text-sm text-success-text"
             >
-              {
-                successMessage
-              }
+              {successMessage}
             </p>
           )}
         </div>

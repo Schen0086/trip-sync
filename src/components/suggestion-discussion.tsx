@@ -1,6 +1,4 @@
-import {
-  cache,
-} from "react";
+import { cache } from "react";
 
 import Avatar from "@/components/avatar";
 import CloseDetailsSubmitButton from "@/components/close-details-submit-button";
@@ -10,53 +8,31 @@ import PersonName from "@/components/person-name";
 
 import {
   createSuggestionComment,
-  updateSuggestionComment,
-} from "@/app/(app)/trips/[id]/voting/discussion-actions";
-
-import {
   createSuggestionReply,
   deleteSuggestionCommentSafely,
-} from "@/app/(app)/trips/[id]/voting/discussion-followup-actions";
-
-import {
-  createClient,
-} from "@/lib/supabase/server";
+  updateSuggestionComment,
+} from "@/app/(app)/trips/[id]/voting/discussion-actions";
+import { createClient } from "@/lib/supabase/server";
 
 
 type CommentAuthor = {
-  display_name:
-    | string
-    | null;
-
-  username:
-    | string
-    | null;
-
-  avatar_url:
-    | string
-    | null;
+  display_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
 };
 
 
 type SuggestionComment = {
   id: string;
-
   trip_id: string;
-
   item_id: string;
-
   author_user_id: string;
-
   parent_comment_id:
     | string
     | null;
-
   content: string;
-
   created_at: string;
-
   updated_at: string;
-
   author:
     | CommentAuthor
     | null;
@@ -65,18 +41,14 @@ type SuggestionComment = {
 
 type DiscussionReadRow = {
   item_id: string;
-
   last_read_at: string;
 };
 
 
 type SuggestionDiscussionProps = {
   tripId: string;
-
   itemId: string;
-
   currentUserId: string;
-
   canComment: boolean;
 };
 
@@ -88,22 +60,11 @@ function normalizeAuthor(
     | null
     | undefined
 ): CommentAuthor | null {
-  if (
-    Array.isArray(
-      author
-    )
-  ) {
-    return (
-      author[0] ??
-      null
-    );
+  if (Array.isArray(author)) {
+    return author[0] ?? null;
   }
 
-
-  return (
-    author ??
-    null
-  );
+  return author ?? null;
 }
 
 
@@ -115,37 +76,21 @@ function formatCommentTimestamp(
   ).toLocaleString(
     "en-IE",
     {
-      day:
-        "numeric",
-
-      month:
-        "short",
-
-      year:
-        "numeric",
-
-      hour:
-        "2-digit",
-
-      minute:
-        "2-digit",
-
-      timeZone:
-        "UTC",
-
-      timeZoneName:
-        "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "UTC",
+      timeZoneName: "short",
     }
   );
 }
 
 
 /**
- * Every discussion component on the same voting page
- * shares this request-cached query.
- *
- * Comments and read-state are both loaded once rather
- * than creating a database request for every suggestion.
+ * All discussion components on one voting page share this request-cached
+ * query, preventing one database request per suggestion.
  */
 const getTripDiscussionData =
   cache(
@@ -155,7 +100,6 @@ const getTripDiscussionData =
     ) => {
       const supabase =
         await createClient();
-
 
       const [
         commentsResult,
@@ -188,8 +132,7 @@ const getTripDiscussionData =
             .order(
               "created_at",
               {
-                ascending:
-                  true,
+                ascending: true,
               }
             ),
 
@@ -211,7 +154,6 @@ const getTripDiscussionData =
             ),
         ]);
 
-
       if (
         commentsResult.error
       ) {
@@ -220,37 +162,29 @@ const getTripDiscussionData =
           commentsResult.error
         );
 
-
         return {
           commentsByItem:
             new Map<
               string,
               SuggestionComment[]
             >(),
-
           readAtByItem:
             new Map<
               string,
               string
             >(),
-
           errorMessage:
-            commentsResult
-              .error
+            commentsResult.error
               .message,
         };
       }
 
-
-      if (
-        readsResult.error
-      ) {
+      if (readsResult.error) {
         console.error(
           "Failed to load discussion read state:",
           readsResult.error
         );
       }
-
 
       const commentsByItem =
         new Map<
@@ -258,64 +192,47 @@ const getTripDiscussionData =
           SuggestionComment[]
         >();
 
+      for (
+        const row of
+        commentsResult.data ?? []
+      ) {
+        const comment:
+          SuggestionComment = {
+          id: row.id,
+          trip_id:
+            row.trip_id,
+          item_id:
+            row.item_id,
+          author_user_id:
+            row.author_user_id,
+          parent_comment_id:
+            row.parent_comment_id ??
+            null,
+          content:
+            row.content,
+          created_at:
+            row.created_at,
+          updated_at:
+            row.updated_at,
+          author:
+            normalizeAuthor(
+              row.author
+            ),
+        };
 
-      (
-        commentsResult.data ??
-        []
-      ).forEach(
-        (row) => {
-          const comment:
-            SuggestionComment = {
-            id:
-              row.id,
+        const itemComments =
+          commentsByItem.get(
+            comment.item_id
+          ) ?? [];
 
-            trip_id:
-              row.trip_id,
-
-            item_id:
-              row.item_id,
-
-            author_user_id:
-              row.author_user_id,
-
-            parent_comment_id:
-              row.parent_comment_id ??
-              null,
-
-            content:
-              row.content,
-
-            created_at:
-              row.created_at,
-
-            updated_at:
-              row.updated_at,
-
-            author:
-              normalizeAuthor(
-                row.author
-              ),
-          };
-
-
-          const current =
-            commentsByItem.get(
-              comment.item_id
-            ) ?? [];
-
-
-          current.push(
-            comment
-          );
-
-
-          commentsByItem.set(
-            comment.item_id,
-            current
-          );
-        }
-      );
-
+        itemComments.push(
+          comment
+        );
+        commentsByItem.set(
+          comment.item_id,
+          itemComments
+        );
+      }
 
       const readAtByItem =
         new Map<
@@ -323,29 +240,21 @@ const getTripDiscussionData =
           string
         >();
 
-
-      (
-        (
-          readsResult.data ??
-          []
-        ) as DiscussionReadRow[]
-      ).forEach(
-        (read) => {
-          readAtByItem.set(
-            read.item_id,
-            read.last_read_at
-          );
-        }
-      );
-
+      for (
+        const read of
+        (readsResult.data ??
+          []) as DiscussionReadRow[]
+      ) {
+        readAtByItem.set(
+          read.item_id,
+          read.last_read_at
+        );
+      }
 
       return {
         commentsByItem,
-
         readAtByItem,
-
-        errorMessage:
-          null,
+        errorMessage: null,
       };
     }
   );
@@ -367,34 +276,21 @@ export default async function SuggestionDiscussion({
       currentUserId
     );
 
-
   const comments =
     commentsByItem.get(
       itemId
     ) ?? [];
-
-
-  const commentCount =
-    comments.length;
-
-
   const discussionOpen =
     canComment &&
     !errorMessage;
-
-
   const lastReadAt =
     readAtByItem.get(
       itemId
-    ) ??
-    null;
-
+    ) ?? null;
 
   const unreadCount =
     comments.filter(
       (comment) => {
-        // Your own messages should never
-        // appear unread to you.
         if (
           comment.author_user_id ===
           currentUserId
@@ -402,13 +298,9 @@ export default async function SuggestionDiscussion({
           return false;
         }
 
-
-        if (
-          !lastReadAt
-        ) {
+        if (!lastReadAt) {
           return true;
         }
-
 
         return (
           new Date(
@@ -421,7 +313,6 @@ export default async function SuggestionDiscussion({
       }
     ).length;
 
-
   const commentIds =
     new Set(
       comments.map(
@@ -430,10 +321,6 @@ export default async function SuggestionDiscussion({
       )
     );
 
-
-  // A reply whose parent no longer exists is
-  // rendered as a main comment as a defensive
-  // fallback, though the FK normally prevents this.
   const mainComments =
     comments.filter(
       (comment) =>
@@ -443,49 +330,35 @@ export default async function SuggestionDiscussion({
         )
     );
 
-
   const repliesByParent =
     new Map<
       string,
       SuggestionComment[]
     >();
 
-
-  comments.forEach(
-    (comment) => {
-      if (
-        !comment.parent_comment_id
-      ) {
-        return;
-      }
-
-
-      const current =
-        repliesByParent.get(
-          comment.parent_comment_id
-        ) ?? [];
-
-
-      current.push(
-        comment
-      );
-
-
-      repliesByParent.set(
-        comment.parent_comment_id,
-        current
-      );
+  for (const comment of comments) {
+    if (
+      !comment.parent_comment_id
+    ) {
+      continue;
     }
-  );
+
+    const replies =
+      repliesByParent.get(
+        comment.parent_comment_id
+      ) ?? [];
+
+    replies.push(comment);
+    repliesByParent.set(
+      comment.parent_comment_id,
+      replies
+    );
+  }
 
 
   function renderComment(
-    comment:
-      SuggestionComment,
-
-    isReply:
-      boolean,
-
+    comment: SuggestionComment,
+    isReply: boolean,
     childReplies:
       SuggestionComment[] = []
   ) {
@@ -493,24 +366,16 @@ export default async function SuggestionDiscussion({
       comment.author
         ?.display_name ??
       "Traveller";
-
-
     const avatarUrl =
       comment.author
         ?.avatar_url ??
       null;
-
-
     const isOwnComment =
       comment.author_user_id ===
       currentUserId;
-
-
     const wasEdited =
       comment.updated_at !==
       comment.created_at;
-
-
     const canDelete =
       discussionOpen &&
       isOwnComment &&
@@ -520,13 +385,10 @@ export default async function SuggestionDiscussion({
           0
       );
 
-
     return (
       <article
         id={`comment-${comment.id}`}
-        key={
-          comment.id
-        }
+        key={comment.id}
         className={
           isReply
             ? "scroll-mt-28 py-4"
@@ -534,11 +396,8 @@ export default async function SuggestionDiscussion({
         }
       >
         <div className="flex items-start gap-3">
-          {/* Author avatar */}
           <Avatar
-            src={
-              avatarUrl
-            }
+            src={avatarUrl}
             displayName={
               authorName
             }
@@ -549,9 +408,7 @@ export default async function SuggestionDiscussion({
             }
           />
 
-
           <div className="min-w-0 flex-1">
-            {/* Comment metadata */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <PersonName
                 userId={
@@ -566,13 +423,11 @@ export default async function SuggestionDiscussion({
                 highlightCurrentUser
               />
 
-
               {isReply && (
                 <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-subtle">
                   Reply
                 </span>
               )}
-
 
               <span
                 aria-hidden="true"
@@ -580,7 +435,6 @@ export default async function SuggestionDiscussion({
               >
                 ·
               </span>
-
 
               <time
                 dateTime={
@@ -593,7 +447,6 @@ export default async function SuggestionDiscussion({
                 )}
               </time>
 
-
               {wasEdited && (
                 <span className="text-xs text-subtle">
                   Edited
@@ -601,25 +454,17 @@ export default async function SuggestionDiscussion({
               )}
             </div>
 
-
-            {/* Comment body */}
             <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-ink">
-              {
-                comment.content
-              }
+              {comment.content}
             </p>
 
-
-            {/* Comment controls */}
             {discussionOpen && (
               <div className="mt-3 flex flex-wrap items-start gap-1">
-                {/* Reply only to top-level comments. */}
                 {!isReply && (
                   <details className="group/comment-reply min-w-0">
                     <summary className="inline-flex h-8 cursor-pointer list-none items-center rounded-lg px-2 text-xs font-medium leading-none text-brand-700 transition hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-brand-100 [&::-webkit-details-marker]:hidden">
                       Reply
                     </summary>
-
 
                     <form
                       action={
@@ -630,65 +475,44 @@ export default async function SuggestionDiscussion({
                       <input
                         type="hidden"
                         name="tripId"
-                        value={
-                          tripId
-                        }
+                        value={tripId}
                       />
-
                       <input
                         type="hidden"
                         name="itemId"
-                        value={
-                          itemId
-                        }
+                        value={itemId}
                       />
-
                       <input
                         type="hidden"
                         name="parentCommentId"
-                        value={
-                          comment.id
-                        }
+                        value={comment.id}
                       />
-
 
                       <label
                         htmlFor={`reply-comment-${comment.id}`}
                         className="text-xs font-medium text-muted"
                       >
                         Reply to{" "}
-                        {
-                          authorName
-                        }
+                        {authorName}
                       </label>
-
 
                       <textarea
                         id={`reply-comment-${comment.id}`}
                         name="content"
                         required
-                        minLength={
-                          1
-                        }
-                        maxLength={
-                          2000
-                        }
-                        rows={
-                          3
-                        }
+                        minLength={1}
+                        maxLength={2000}
+                        rows={3}
                         placeholder="Write a reply..."
                         className="w-full resize-y rounded-xl border border-line bg-surface px-3.5 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
                       />
-
 
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-xs text-subtle">
                           Maximum 2,000 characters.
                         </p>
 
-                        <CloseDetailsSubmitButton
-                          className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
-                        >
+                        <CloseDetailsSubmitButton className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100">
                           Post reply
                         </CloseDetailsSubmitButton>
                       </div>
@@ -696,14 +520,11 @@ export default async function SuggestionDiscussion({
                   </details>
                 )}
 
-
-                {/* Edit own comment/reply */}
                 {isOwnComment && (
                   <details className="group/comment-edit min-w-0">
                     <summary className="inline-flex h-8 cursor-pointer list-none items-center rounded-lg px-2 text-xs font-medium leading-none text-brand-700 transition hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-brand-100 [&::-webkit-details-marker]:hidden">
                       Edit
                     </summary>
-
 
                     <form
                       action={
@@ -714,27 +535,18 @@ export default async function SuggestionDiscussion({
                       <input
                         type="hidden"
                         name="tripId"
-                        value={
-                          tripId
-                        }
+                        value={tripId}
                       />
-
                       <input
                         type="hidden"
                         name="itemId"
-                        value={
-                          itemId
-                        }
+                        value={itemId}
                       />
-
                       <input
                         type="hidden"
                         name="commentId"
-                        value={
-                          comment.id
-                        }
+                        value={comment.id}
                       />
-
 
                       <label
                         htmlFor={`edit-comment-${comment.id}`}
@@ -746,40 +558,26 @@ export default async function SuggestionDiscussion({
                           : "comment"}
                       </label>
 
-
                       <textarea
                         id={`edit-comment-${comment.id}`}
                         name="content"
                         required
-                        minLength={
-                          1
-                        }
-                        maxLength={
-                          2000
-                        }
-                        rows={
-                          4
-                        }
+                        minLength={1}
+                        maxLength={2000}
+                        rows={4}
                         defaultValue={
                           comment.content
                         }
                         className="w-full resize-y rounded-xl border border-line bg-surface px-3.5 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
                       />
 
-
-                      <div className="flex flex-wrap items-center gap-3">
-                        <CloseDetailsSubmitButton
-                          className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
-                        >
-                          Save changes
-                        </CloseDetailsSubmitButton>
-                      </div>
+                      <CloseDetailsSubmitButton className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100">
+                        Save changes
+                      </CloseDetailsSubmitButton>
                     </form>
                   </details>
                 )}
 
-
-                {/* Safe delete */}
                 {canDelete && (
                   <form
                     action={
@@ -790,27 +588,18 @@ export default async function SuggestionDiscussion({
                     <input
                       type="hidden"
                       name="tripId"
-                      value={
-                        tripId
-                      }
+                      value={tripId}
                     />
-
                     <input
                       type="hidden"
                       name="itemId"
-                      value={
-                        itemId
-                      }
+                      value={itemId}
                     />
-
                     <input
                       type="hidden"
                       name="commentId"
-                      value={
-                        comment.id
-                      }
+                      value={comment.id}
                     />
-
 
                     <ConfirmActionButton
                       message={
@@ -825,37 +614,32 @@ export default async function SuggestionDiscussion({
                   </form>
                 )}
 
-
-                {/* Preserve conversation context. */}
-                {discussionOpen &&
-                  isOwnComment &&
+                {isOwnComment &&
                   !isReply &&
                   childReplies.length >
                     0 && (
-                  <span className="inline-flex h-8 items-center px-2 text-xs text-subtle">
-                    Cannot delete while replies exist
-                  </span>
-                )}
+                    <span className="inline-flex h-8 items-center px-2 text-xs text-subtle">
+                      Cannot delete while replies exist
+                    </span>
+                  )}
               </div>
             )}
           </div>
         </div>
 
-
-        {/* One-level reply thread */}
         {!isReply &&
           childReplies.length >
             0 && (
-          <div className="ml-4 mt-4 border-l-2 border-line pl-4 sm:ml-12 sm:pl-5">
-            {childReplies.map(
-              (reply) =>
-                renderComment(
-                  reply,
-                  true
-                )
-            )}
-          </div>
-        )}
+            <div className="ml-4 mt-4 border-l-2 border-line pl-4 sm:ml-12 sm:pl-5">
+              {childReplies.map(
+                (reply) =>
+                  renderComment(
+                    reply,
+                    true
+                  )
+              )}
+            </div>
+          )}
       </article>
     );
   }
@@ -866,7 +650,6 @@ export default async function SuggestionDiscussion({
       id={`discussion-${itemId}`}
       className="group/discussion mt-8 scroll-mt-28 overflow-hidden rounded-2xl border border-line bg-surface-soft"
     >
-      {/* Discussion summary */}
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 transition hover:bg-surface-hover [&::-webkit-details-marker]:hidden sm:p-5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -874,30 +657,20 @@ export default async function SuggestionDiscussion({
               Discussion
             </h4>
 
-
             <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-medium text-muted">
-              {
-                commentCount
-              }{" "}
-              {commentCount ===
-              1
+              {comments.length}{" "}
+              {comments.length === 1
                 ? "comment"
                 : "comments"}
             </span>
 
-
             <DiscussionReadMarker
-              tripId={
-                tripId
-              }
-              itemId={
-                itemId
-              }
+              tripId={tripId}
+              itemId={itemId}
               initialUnreadCount={
                 unreadCount
               }
             />
-
 
             {!canComment && (
               <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-medium text-subtle">
@@ -906,14 +679,12 @@ export default async function SuggestionDiscussion({
             )}
           </div>
 
-
           <p className="mt-1 text-sm text-muted">
             {canComment
               ? "Share thoughts, questions and replies about this suggestion."
               : "The discussion is preserved with the final voting history."}
           </p>
         </div>
-
 
         <svg
           viewBox="0 0 24 24"
@@ -929,9 +700,7 @@ export default async function SuggestionDiscussion({
         </svg>
       </summary>
 
-
       <div className="border-t border-line p-4 sm:p-5">
-        {/* Loading error */}
         {errorMessage && (
           <div
             role="alert"
@@ -941,16 +710,12 @@ export default async function SuggestionDiscussion({
           </div>
         )}
 
-
-        {/* Empty discussion */}
         {!errorMessage &&
-        comments.length ===
-          0 ? (
+        comments.length === 0 ? (
           <div className="rounded-xl border border-dashed border-line bg-surface px-5 py-7 text-center">
             <p className="font-medium text-ink">
               No comments yet
             </p>
-
             <p className="mt-1 text-sm text-muted">
               {canComment
                 ? "Start the discussion about this suggestion."
@@ -959,57 +724,44 @@ export default async function SuggestionDiscussion({
           </div>
         ) : null}
 
-
-        {/* Existing threaded comments */}
         {!errorMessage &&
           mainComments.length >
             0 && (
-          <div className="divide-y divide-line">
-            {mainComments.map(
-              (
-                comment
-              ) =>
-                renderComment(
-                  comment,
-                  false,
-                  repliesByParent.get(
-                    comment.id
-                  ) ?? []
-                )
-            )}
-          </div>
-        )}
+            <div className="divide-y divide-line">
+              {mainComments.map(
+                (comment) =>
+                  renderComment(
+                    comment,
+                    false,
+                    repliesByParent.get(
+                      comment.id
+                    ) ?? []
+                  )
+              )}
+            </div>
+          )}
 
-
-        {/* Add new top-level comment */}
         {discussionOpen && (
           <form
             action={
               createSuggestionComment
             }
-            className={`${
-              comments.length >
-              0
+            className={
+              comments.length > 0
                 ? "mt-5 border-t border-line pt-5"
                 : "mt-5"
-            }`}
+            }
           >
             <input
               type="hidden"
               name="tripId"
-              value={
-                tripId
-              }
+              value={tripId}
             />
-
             <input
               type="hidden"
               name="itemId"
-              value={
-                itemId
-              }
+              value={itemId}
             />
-
 
             <label
               htmlFor={`new-comment-${itemId}`}
@@ -1018,30 +770,21 @@ export default async function SuggestionDiscussion({
               Add a comment
             </label>
 
-
             <textarea
               id={`new-comment-${itemId}`}
               name="content"
               required
-              minLength={
-                1
-              }
-              maxLength={
-                2000
-              }
-              rows={
-                4
-              }
+              minLength={1}
+              maxLength={2000}
+              rows={4}
               placeholder="Share a thought, question or reason for your vote..."
               className="mt-2 w-full resize-y rounded-xl border border-line bg-surface px-3.5 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
             />
-
 
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-subtle">
                 Maximum 2,000 characters.
               </p>
-
 
               <button
                 type="submit"
@@ -1053,23 +796,20 @@ export default async function SuggestionDiscussion({
           </form>
         )}
 
-
-        {/* Historical discussion notice */}
         {!canComment &&
           !errorMessage && (
-          <div
-            className={
-              comments.length >
-              0
-                ? "mt-5 border-t border-line pt-4"
-                : "mt-5"
-            }
-          >
-            <p className="text-xs leading-5 text-subtle">
-              This discussion is read only because the suggestion is no longer open for voting. Restoring the suggestion to voting will reopen the discussion.
-            </p>
-          </div>
-        )}
+            <div
+              className={
+                comments.length > 0
+                  ? "mt-5 border-t border-line pt-4"
+                  : "mt-5"
+              }
+            >
+              <p className="text-xs leading-5 text-subtle">
+                This discussion is read only because the suggestion is no longer open for voting. Restoring the suggestion to voting will reopen the discussion.
+              </p>
+            </div>
+          )}
       </div>
     </details>
   );
