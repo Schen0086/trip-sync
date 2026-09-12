@@ -11,52 +11,47 @@ import {
 
 
 type SubmitButtonProps =
-  Omit<
-    ButtonHTMLAttributes<HTMLButtonElement>,
-    "type"
-  > & {
-    children:
-      ReactNode;
-
-    pendingLabel?:
-      ReactNode;
+  ButtonHTMLAttributes<HTMLButtonElement> & {
+    pendingLabel?: ReactNode;
   };
 
 
 export default function SubmitButton({
   children,
-  pendingLabel,
+  pendingLabel = "Please wait...",
   disabled,
-  ...buttonProps
+  className = "",
+  type = "submit",
+  ...props
 }: SubmitButtonProps) {
   const {
     pending,
-  } =
-    useFormStatus();
-
+  } = useFormStatus();
 
   const isDisabled =
-    Boolean(
-      disabled
-    ) ||
-    pending;
+    pending ||
+    disabled;
 
 
   return (
     <button
-      {...buttonProps}
-      type="submit"
-      disabled={
-        isDisabled
-      }
-      aria-busy={
-        pending
-      }
+      {...props}
+      type={type}
+      disabled={isDisabled}
+      aria-disabled={isDisabled}
+      aria-busy={pending}
+      className={[
+        className,
+        "disabled:cursor-not-allowed disabled:opacity-60",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
-      {pending
-        ? pendingLabel ??
-          children
-        : children}
+      {
+        pending
+          ? pendingLabel
+          : children
+      }
     </button>
   );
 }

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createGroup } from "@/app/(app)/groups/actions";
 import BackButton from "@/components/back-button";
+import SubmitButton from "@/components/submit-button";
 
 type GroupTripPageProps = {
   searchParams: Promise<{
@@ -218,12 +219,12 @@ export default async function NewGroupTripPage({
               </div>
 
               {/* Create group */}
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Creating group..."
                 className="cursor-pointer rounded-xl border border-line bg-surface-soft px-4 py-2.5 text-sm font-medium text-ink transition hover:border-line-strong hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
               >
                 Create group
-              </button>
+              </SubmitButton>
             </form>
           </div>
         </section>

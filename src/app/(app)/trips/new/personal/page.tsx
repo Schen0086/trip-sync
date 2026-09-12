@@ -1,5 +1,6 @@
 import { createTrip } from "@/app/(app)/trips/actions";
 import BackButton from "@/components/back-button";
+import SubmitButton from "@/components/submit-button";
 
 type PersonalTripPageProps = {
   searchParams: Promise<{
@@ -192,12 +193,12 @@ export default async function NewPersonalTripPage({
 
               {/* Form actions */}
               <div className="flex justify-end border-t border-line pt-6">
-                <button
-                  type="submit"
+                <SubmitButton
+                  pendingLabel="Creating trip..."
                   className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
                 >
                   Create trip
-                </button>
+                </SubmitButton>
               </div>
             </form>
           </div>

@@ -11,6 +11,7 @@ import {
   joinGroupByCode,
 } from "./actions";
 
+import SubmitButton from "@/components/submit-button";
 
 type GroupsPageProps = {
   searchParams: Promise<{
@@ -777,12 +778,12 @@ export default async function GroupsPage({
               </div>
 
 
-              <button
+              <SubmitButton
                 type="submit"
                 className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
               >
                 Create group
-              </button>
+              </SubmitButton>
             </form>
           </details>
 
