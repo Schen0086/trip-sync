@@ -38,6 +38,7 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Real-time collaborative updates
 - Responsive desktop and mobile layouts
 - Light and dark themes
+- Secure email-based password recovery
 
 ## Tech Stack
 

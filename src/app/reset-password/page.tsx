@@ -12,21 +12,20 @@ import {
 } from "@/lib/supabase/server";
 
 import {
-  login,
-} from "./actions";
+  resetPassword,
+} from "@/app/login/actions";
 
 
-type LoginPageProps = {
+type ResetPasswordPageProps = {
   searchParams: Promise<{
     error?: string;
-    success?: string;
   }>;
 };
 
 
-export default async function LoginPage({
+export default async function ResetPasswordPage({
   searchParams,
-}: LoginPageProps) {
+}: ResetPasswordPageProps) {
   const params =
     await searchParams;
 
@@ -36,16 +35,20 @@ export default async function LoginPage({
 
   const {
     data,
+    error,
   } =
     await supabase.auth
       .getClaims();
 
 
   if (
-    data?.claims
+    error ||
+    !data?.claims
   ) {
     redirect(
-      "/dashboard"
+      `/forgot-password?error=${encodeURIComponent(
+        "Your password reset link is invalid or has expired. Request a new one."
+      )}`
     );
   }
 
@@ -53,20 +56,23 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas px-6 py-12">
       <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-8 shadow-sm">
+        {/* Page heading */}
         <div>
           <p className="text-sm font-semibold text-brand-700">
             TripSync
           </p>
 
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">
-            Welcome back
+            Choose a new password
           </h1>
 
           <p className="mt-2 text-muted">
-            Log in to continue planning your trips.
+            Enter a new password for your TripSync account.
           </p>
         </div>
 
+
+        {/* Error message */}
         {params.error && (
           <div
             role="alert"
@@ -78,85 +84,73 @@ export default async function LoginPage({
           </div>
         )}
 
-        {params.success && (
-          <div
-            role="status"
-            className="mt-6 rounded-xl border border-success-border bg-success-surface px-4 py-3 text-sm text-success-text"
-          >
-            {
-              params.success
-            }
-          </div>
-        )}
 
+        {/* Password reset form */}
         <form
           action={
-            login
+            resetPassword
           }
           className="mt-8 space-y-5"
         >
           <div>
             <label
-              htmlFor="email"
+              htmlFor="password"
               className="mb-1.5 block text-sm font-medium text-ink"
             >
-              Email
+              New password
             </label>
-
-            <input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="you@example.com"
-              required
-              autoComplete="email"
-              className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
-            />
-          </div>
-
-          <div>
-            <div className="mb-1.5 flex items-center justify-between gap-4">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-ink"
-              >
-                Password
-              </label>
-
-              <Link
-                href="/forgot-password"
-                className="text-sm font-medium text-brand-700 transition hover:text-brand-800"
-              >
-                Forgot password?
-              </Link>
-            </div>
 
             <PasswordInput
               id="password"
               name="password"
-              placeholder="Enter your password"
+              placeholder="At least 8 characters"
+              minLength={8}
               required
-              autoComplete="current-password"
+              autoComplete="new-password"
+              className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+            />
+
+            <p className="mt-1.5 text-xs text-subtle">
+              Must be at least 8 characters.
+            </p>
+          </div>
+
+
+          <div>
+            <label
+              htmlFor="confirmPassword"
+              className="mb-1.5 block text-sm font-medium text-ink"
+            >
+              Confirm new password
+            </label>
+
+            <PasswordInput
+              id="confirmPassword"
+              name="confirmPassword"
+              placeholder="Enter your new password again"
+              minLength={8}
+              required
+              autoComplete="new-password"
               className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
             />
           </div>
 
+
           <SubmitButton
-            pendingLabel="Logging in..."
+            pendingLabel="Updating password..."
             className="w-full cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Log in
+            Update password
           </SubmitButton>
         </form>
 
 
         <p className="mt-6 text-center text-sm text-muted">
-          Don&apos;t have an account?{" "}
           <Link
-            href="/signup"
+            href="/login"
             className="font-medium text-brand-700 transition hover:text-brand-800"
           >
-            Sign up
+            Back to login
           </Link>
         </p>
       </div>

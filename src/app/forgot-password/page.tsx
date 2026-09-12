@@ -4,7 +4,6 @@ import {
   redirect,
 } from "next/navigation";
 
-import PasswordInput from "@/components/password-input";
 import SubmitButton from "@/components/submit-button";
 
 import {
@@ -12,11 +11,11 @@ import {
 } from "@/lib/supabase/server";
 
 import {
-  login,
-} from "./actions";
+  forgotPassword,
+} from "@/app/login/actions";
 
 
-type LoginPageProps = {
+type ForgotPasswordPageProps = {
   searchParams: Promise<{
     error?: string;
     success?: string;
@@ -24,9 +23,9 @@ type LoginPageProps = {
 };
 
 
-export default async function LoginPage({
+export default async function ForgotPasswordPage({
   searchParams,
-}: LoginPageProps) {
+}: ForgotPasswordPageProps) {
   const params =
     await searchParams;
 
@@ -53,20 +52,23 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas px-6 py-12">
       <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-8 shadow-sm">
+        {/* Page heading */}
         <div>
           <p className="text-sm font-semibold text-brand-700">
             TripSync
           </p>
 
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">
-            Welcome back
+            Forgot your password?
           </h1>
 
           <p className="mt-2 text-muted">
-            Log in to continue planning your trips.
+            Enter your email address and we&apos;ll send you a link to choose a new password.
           </p>
         </div>
 
+
+        {/* Error message */}
         {params.error && (
           <div
             role="alert"
@@ -78,6 +80,8 @@ export default async function LoginPage({
           </div>
         )}
 
+
+        {/* Success message */}
         {params.success && (
           <div
             role="status"
@@ -89,9 +93,11 @@ export default async function LoginPage({
           </div>
         )}
 
+
+        {/* Recovery form */}
         <form
           action={
-            login
+            forgotPassword
           }
           className="mt-8 space-y-5"
         >
@@ -114,49 +120,23 @@ export default async function LoginPage({
             />
           </div>
 
-          <div>
-            <div className="mb-1.5 flex items-center justify-between gap-4">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-ink"
-              >
-                Password
-              </label>
-
-              <Link
-                href="/forgot-password"
-                className="text-sm font-medium text-brand-700 transition hover:text-brand-800"
-              >
-                Forgot password?
-              </Link>
-            </div>
-
-            <PasswordInput
-              id="password"
-              name="password"
-              placeholder="Enter your password"
-              required
-              autoComplete="current-password"
-              className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
-            />
-          </div>
-
           <SubmitButton
-            pendingLabel="Logging in..."
+            pendingLabel="Sending reset link..."
             className="w-full cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Log in
+            Send reset link
           </SubmitButton>
         </form>
 
 
+        {/* Login link */}
         <p className="mt-6 text-center text-sm text-muted">
-          Don&apos;t have an account?{" "}
+          Remember your password?{" "}
           <Link
-            href="/signup"
+            href="/login"
             className="font-medium text-brand-700 transition hover:text-brand-800"
           >
-            Sign up
+            Back to login
           </Link>
         </p>
       </div>

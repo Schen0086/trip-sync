@@ -12,6 +12,22 @@ import {
 } from "@/lib/supabase/server";
 
 
+function getSafeNextPath(
+  next: string | null,
+  fallback: string
+) {
+  if (
+    next &&
+    next.startsWith("/") &&
+    !next.startsWith("//")
+  ) {
+    return next;
+  }
+
+  return fallback;
+}
+
+
 export async function GET(
   request: NextRequest
 ) {
@@ -38,6 +54,29 @@ export async function GET(
       "code"
     );
 
+  const next =
+    searchParams.get(
+      "next"
+    );
+
+
+  const fallbackDestination =
+    type === "recovery"
+      ? "/reset-password"
+      : "/dashboard";
+
+  const destination =
+    getSafeNextPath(
+      next,
+      fallbackDestination
+    );
+
+  const isRecoveryFlow =
+    type === "recovery" ||
+    destination ===
+      "/reset-password";
+
+
   const supabase =
     await createClient();
 
@@ -57,14 +96,16 @@ export async function GET(
         type,
       });
 
+
     if (!error) {
       return NextResponse.redirect(
         new URL(
-          "/dashboard",
+          destination,
           request.url
         )
       );
     }
+
 
     console.error(
       "Email confirmation failed:",
@@ -73,8 +114,8 @@ export async function GET(
   }
 
 
-  // Backwards compatibility for any
-  // older links already sitting in inboxes.
+  // Backwards compatibility for links that
+  // use the PKCE authorization-code flow.
   if (code) {
     const {
       error,
@@ -83,18 +124,32 @@ export async function GET(
         code
       );
 
+
     if (!error) {
       return NextResponse.redirect(
         new URL(
-          "/dashboard",
+          destination,
           request.url
         )
       );
     }
 
+
     console.error(
       "Auth code exchange failed:",
       error
+    );
+  }
+
+
+  if (isRecoveryFlow) {
+    return NextResponse.redirect(
+      new URL(
+        `/forgot-password?error=${encodeURIComponent(
+          "This password reset link is invalid or has expired. Request a new one."
+        )}`,
+        request.url
+      )
     );
   }
 
