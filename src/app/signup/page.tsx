@@ -112,7 +112,7 @@ export default async function SignupPage({
               id="displayName"
               name="displayName"
               type="text"
-              placeholder="john"
+              placeholder="John"
               required
               minLength={
                 2

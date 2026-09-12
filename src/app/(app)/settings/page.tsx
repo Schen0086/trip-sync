@@ -362,7 +362,7 @@ export default async function SettingsPage({
                       ?.username ??
                     ""
                   }
-                  placeholder="john"
+                  placeholder="John"
                   autoComplete="username"
                   disabled={
                     usernameCooldown
