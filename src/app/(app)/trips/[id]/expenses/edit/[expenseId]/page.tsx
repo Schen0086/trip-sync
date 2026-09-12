@@ -96,7 +96,9 @@ export default async function EditExpensePage({
 
   if (!expenseData) {
     redirect(
-      `/trips/${trip.id}/expenses`
+      `/trips/${trip.id}/expenses?error=${encodeURIComponent(
+        "This expense is no longer available."
+      )}`
     );
   }
 
@@ -111,7 +113,9 @@ export default async function EditExpensePage({
 
   if (!canEdit) {
     redirect(
-      `/trips/${trip.id}/expenses`
+      `/trips/${trip.id}/expenses?error=${encodeURIComponent(
+        "You no longer have permission to edit this expense."
+      )}`
     );
   }
 

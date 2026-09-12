@@ -1,23 +1,60 @@
 import Link from "next/link";
-import { signup } from "@/app/login/actions";
+
+import {
+  redirect,
+} from "next/navigation";
+
+import {
+  signup,
+} from "@/app/login/actions";
+
 import PasswordInput from "@/components/password-input";
+import SubmitButton from "@/components/submit-button";
+
+import {
+  createClient,
+} from "@/lib/supabase/server";
+
 
 type SignupPageProps = {
   searchParams: Promise<{
     error?: string;
+
     success?: string;
   }>;
 };
 
+
 export default async function SignupPage({
   searchParams,
 }: SignupPageProps) {
-  const params = await searchParams;
+  const params =
+    await searchParams;
+
+
+  const supabase =
+    await createClient();
+
+
+  const {
+    data,
+  } =
+    await supabase.auth
+      .getClaims();
+
+
+  if (
+    data?.claims
+  ) {
+    redirect(
+      "/dashboard"
+    );
+  }
+
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas px-6 py-12">
       <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-8 shadow-sm">
-        {/* Page heading */}
         <div>
           <p className="text-sm font-semibold text-brand-700">
             TripSync
@@ -32,32 +69,37 @@ export default async function SignupPage({
           </p>
         </div>
 
-        {/* Error message */}
+
         {params.error && (
           <div
             role="alert"
             className="mt-6 rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-text"
           >
-            {params.error}
+            {
+              params.error
+            }
           </div>
         )}
 
-        {/* Success message */}
+
         {params.success && (
           <div
             role="status"
             className="mt-6 rounded-xl border border-success-border bg-success-surface px-4 py-3 text-sm text-success-text"
           >
-            {params.success}
+            {
+              params.success
+            }
           </div>
         )}
 
-        {/* Signup form */}
+
         <form
-          action={signup}
+          action={
+            signup
+          }
           className="mt-8 space-y-5"
         >
-          {/* Display name */}
           <div>
             <label
               htmlFor="displayName"
@@ -72,14 +114,18 @@ export default async function SignupPage({
               type="text"
               placeholder="Jerry"
               required
-              minLength={2}
-              maxLength={50}
+              minLength={
+                2
+              }
+              maxLength={
+                50
+              }
               autoComplete="name"
               className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
             />
           </div>
 
-          {/* Email */}
+
           <div>
             <label
               htmlFor="email"
@@ -99,7 +145,7 @@ export default async function SignupPage({
             />
           </div>
 
-          {/* Password */}
+
           <div>
             <label
               htmlFor="password"
@@ -112,7 +158,9 @@ export default async function SignupPage({
               id="password"
               name="password"
               placeholder="At least 8 characters"
-              minLength={8}
+              minLength={
+                8
+              }
               required
               autoComplete="new-password"
               className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
@@ -123,18 +171,19 @@ export default async function SignupPage({
             </p>
           </div>
 
-          {/* Submit */}
-          <button
-            type="submit"
-            className="w-full cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
+
+          <SubmitButton
+            pendingLabel="Creating account..."
+            className="w-full cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Sign up
-          </button>
+          </SubmitButton>
         </form>
 
-        {/* Login link */}
+
         <p className="mt-6 text-center text-sm text-muted">
           Already have an account?{" "}
+
           <Link
             href="/login"
             className="font-medium text-brand-700 transition hover:text-brand-800"

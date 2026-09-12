@@ -11,6 +11,7 @@ import {
   getItineraryTypeLabel,
   type ItineraryItem,
 } from "@/lib/itinerary";
+import SubmitButton from "@/components/submit-button";
 
 type EditItemPageProps = {
   params: Promise<{
@@ -98,7 +99,9 @@ export default async function EditItemPage({
   // Deleted or inaccessible item
   if (!itemData) {
     redirect(
-      `/trips/${trip.id}/itinerary`
+      `/trips/${trip.id}/itinerary?error=${encodeURIComponent(
+        "This itinerary item is no longer available."
+      )}`
     );
   }
 
@@ -120,7 +123,9 @@ export default async function EditItemPage({
 
   if (!canEdit) {
     redirect(
-      `/trips/${trip.id}/itinerary`
+      `/trips/${trip.id}/itinerary?error=${encodeURIComponent(
+        "You no longer have permission to edit this itinerary item."
+      )}`
     );
   }
 
@@ -239,12 +244,12 @@ export default async function EditItemPage({
             />
 
             <div className="mt-8 flex justify-end border-t border-line pt-6">
-              <button
-                type="submit"
-                className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
+              <SubmitButton
+                pendingLabel="Saving..."
+                className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Save changes
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>

@@ -30,6 +30,8 @@ import {
 
 type DashboardPageProps = {
   searchParams: Promise<{
+    error?: string;
+
     success?: string;
 
     q?: string;
@@ -1443,6 +1445,18 @@ export default async function DashboardPage({
           </p>
         </header>
 
+        {/* Error message */}
+        {query.error && (
+          <div
+            role="alert"
+            className="mt-8 rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-text"
+          >
+            {
+              query.error
+            }
+          </div>
+        )}
+        
         {/* Success message */}
         {query.success && (
           <div

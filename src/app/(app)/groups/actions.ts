@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import {
+  redirect,
+  RedirectType,
+} from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createGroup(
@@ -518,7 +521,7 @@ export async function leaveGroup(
   revalidatePath("/groups");
   revalidatePath("/dashboard");
 
-  redirect(
+  replaceRedirect(
     `/groups?success=${encodeURIComponent(
       "You left the group"
     )}`
@@ -643,9 +646,18 @@ export async function deleteGroup(
   revalidatePath("/dashboard");
   revalidatePath("/trips/new/group");
 
-  redirect(
+  replaceRedirect(
     `/groups?success=${encodeURIComponent(
       "Group deleted"
     )}`
+  );
+}
+
+function replaceRedirect(
+  path: string
+): never {
+  redirect(
+    path,
+    RedirectType.replace
   );
 }

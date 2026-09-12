@@ -6,30 +6,62 @@ import type {
   ReactNode,
 } from "react";
 
+import {
+  useFormStatus,
+} from "react-dom";
+
 
 type CloseDetailsSubmitButtonProps =
   Omit<
     ButtonHTMLAttributes<HTMLButtonElement>,
     "type" | "onClick"
   > & {
-    children: ReactNode;
+    children:
+      ReactNode;
+
+    pendingLabel?:
+      ReactNode;
   };
 
 
 export default function CloseDetailsSubmitButton({
   children,
+  pendingLabel,
+  disabled,
   ...buttonProps
 }: CloseDetailsSubmitButtonProps) {
+  const {
+    pending,
+  } =
+    useFormStatus();
+
+
+  const isDisabled =
+    Boolean(
+      disabled
+    ) ||
+    pending;
+
+
   function handleClick(
     event:
       MouseEvent<HTMLButtonElement>
   ) {
+    if (
+      pending
+    ) {
+      event.preventDefault();
+
+      return;
+    }
+
+
     const form =
       event.currentTarget.form;
 
 
-    // Keep the editor open if native form
-    // validation fails.
+    // Leave the editor open when normal
+    // browser validation has not passed.
     if (
       form &&
       !form.checkValidity()
@@ -46,7 +78,7 @@ export default function CloseDetailsSubmitButton({
 
     if (
       details instanceof
-      HTMLDetailsElement
+        HTMLDetailsElement
     ) {
       details.open =
         false;
@@ -58,11 +90,20 @@ export default function CloseDetailsSubmitButton({
     <button
       {...buttonProps}
       type="submit"
+      disabled={
+        isDisabled
+      }
+      aria-busy={
+        pending
+      }
       onClick={
         handleClick
       }
     >
-      {children}
+      {pending
+        ? pendingLabel ??
+          children
+        : children}
     </button>
   );
 }

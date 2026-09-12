@@ -196,7 +196,11 @@ export default async function GroupPage({
 
   // Group was deleted or user lost access.
   if (!group) {
-    redirect("/groups");
+    redirect(
+      `/groups?error=${encodeURIComponent(
+        "This group is unavailable or you no longer have access."
+      )}`
+    );
   }
 
   // Load current membership.
@@ -210,7 +214,11 @@ export default async function GroupPage({
     .maybeSingle();
 
   if (!currentMembership) {
-    redirect("/groups");
+    redirect(
+      `/groups?error=${encodeURIComponent(
+        "This group is unavailable or you no longer have access."
+      )}`
+    );
   }
 
   const isOwner =

@@ -2,7 +2,6 @@
 
 import type {
   ButtonHTMLAttributes,
-  MouseEvent,
   ReactNode,
 } from "react";
 
@@ -11,29 +10,25 @@ import {
 } from "react-dom";
 
 
-type ConfirmActionButtonProps =
+type SubmitButtonProps =
   Omit<
     ButtonHTMLAttributes<HTMLButtonElement>,
-    "type" | "onClick"
+    "type"
   > & {
     children:
       ReactNode;
-
-    message:
-      string;
 
     pendingLabel?:
       ReactNode;
   };
 
 
-export default function ConfirmActionButton({
+export default function SubmitButton({
   children,
-  message,
   pendingLabel,
   disabled,
   ...buttonProps
-}: ConfirmActionButtonProps) {
+}: SubmitButtonProps) {
   const {
     pending,
   } =
@@ -47,29 +42,6 @@ export default function ConfirmActionButton({
     pending;
 
 
-  function handleClick(
-    event:
-      MouseEvent<HTMLButtonElement>
-  ) {
-    if (
-      pending
-    ) {
-      event.preventDefault();
-
-      return;
-    }
-
-
-    if (
-      !window.confirm(
-        message
-      )
-    ) {
-      event.preventDefault();
-    }
-  }
-
-
   return (
     <button
       {...buttonProps}
@@ -79,9 +51,6 @@ export default function ConfirmActionButton({
       }
       aria-busy={
         pending
-      }
-      onClick={
-        handleClick
       }
     >
       {pending

@@ -12,72 +12,101 @@ import {
   createClient,
 } from "@/lib/supabase/server";
 
+
 type TripLayoutProps = {
-  children: ReactNode;
+  children:
+    ReactNode;
 
   params: Promise<{
     id: string;
   }>;
 };
 
+
 export default async function TripLayout({
   children,
   params,
 }: TripLayoutProps) {
-  const { id } =
+  const {
+    id,
+  } =
     await params;
+
 
   const supabase =
     await createClient();
+
 
   const {
     data,
     error,
   } =
-    await supabase.auth.getClaims();
+    await supabase.auth
+      .getClaims();
+
 
   if (
     error ||
     !data?.claims
   ) {
-    redirect("/login");
+    redirect(
+      "/login"
+    );
   }
 
-  // RLS ensures the user can only
-  // load trips they are allowed to see.
-  const {
-    data: trip,
-    error: tripError,
-  } = await supabase
-    .from("trips")
-    .select(`
-      id,
-      name,
-      trip_type
-    `)
-    .eq("id", id)
-    .maybeSingle();
 
-  if (tripError) {
+  // RLS ensures only users who currently
+  // have access can load this trip.
+  const {
+    data:
+      trip,
+
+    error:
+      tripError,
+  } =
+    await supabase
+      .from(
+        "trips"
+      )
+      .select(`
+        id,
+        name,
+        trip_type
+      `)
+      .eq(
+        "id",
+        id
+      )
+      .maybeSingle();
+
+
+  if (
+    tripError
+  ) {
     console.error(
       "Failed to load trip navigation:",
       tripError
     );
   }
 
+
   if (!trip) {
     redirect(
-      "/dashboard"
+      `/dashboard?error=${encodeURIComponent(
+        "This trip is unavailable or you no longer have access."
+      )}`
     );
   }
 
+
   return (
     <>
-      {/* Trip-level navigation */}
       <div className="sticky top-[72px] z-30 border-b border-line bg-canvas/95 backdrop-blur">
         <div className="mx-auto max-w-6xl px-6 py-3">
           <TripNavigation
-            tripId={trip.id}
+            tripId={
+              trip.id
+            }
             tripName={
               trip.name
             }
@@ -88,7 +117,9 @@ export default async function TripLayout({
         </div>
       </div>
 
-      {children}
+      {
+        children
+      }
     </>
   );
 }

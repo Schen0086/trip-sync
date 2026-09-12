@@ -1,5 +1,20 @@
 import Link from "next/link";
-import { login } from "./actions";
+
+import {
+  redirect,
+} from "next/navigation";
+
+import PasswordInput from "@/components/password-input";
+import SubmitButton from "@/components/submit-button";
+
+import {
+  createClient,
+} from "@/lib/supabase/server";
+
+import {
+  login,
+} from "./actions";
+
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -7,15 +22,37 @@ type LoginPageProps = {
   }>;
 };
 
+
 export default async function LoginPage({
   searchParams,
 }: LoginPageProps) {
-  const params = await searchParams;
+  const params =
+    await searchParams;
+
+
+  const supabase =
+    await createClient();
+
+
+  const {
+    data,
+  } =
+    await supabase.auth
+      .getClaims();
+
+
+  if (
+    data?.claims
+  ) {
+    redirect(
+      "/dashboard"
+    );
+  }
+
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas px-6 py-12">
       <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-8 shadow-sm">
-        {/* Page heading */}
         <div>
           <p className="text-sm font-semibold text-brand-700">
             TripSync
@@ -30,18 +67,25 @@ export default async function LoginPage({
           </p>
         </div>
 
-        {/* Error message */}
+
         {params.error && (
           <div
             role="alert"
             className="mt-6 rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-text"
           >
-            {params.error}
+            {
+              params.error
+            }
           </div>
         )}
 
-        {/* Login form */}
-        <form action={login} className="mt-8 space-y-5">
+
+        <form
+          action={
+            login
+          }
+          className="mt-8 space-y-5"
+        >
           <div>
             <label
               htmlFor="email"
@@ -61,6 +105,7 @@ export default async function LoginPage({
             />
           </div>
 
+
           <div>
             <label
               htmlFor="password"
@@ -69,10 +114,9 @@ export default async function LoginPage({
               Password
             </label>
 
-            <input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               placeholder="Enter your password"
               required
               autoComplete="current-password"
@@ -80,17 +124,19 @@ export default async function LoginPage({
             />
           </div>
 
-          <button
-            type="submit"
-            className="w-full cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
+
+          <SubmitButton
+            pendingLabel="Logging in..."
+            className="w-full cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Log in
-          </button>
+          </SubmitButton>
         </form>
 
-        {/* Signup link */}
+
         <p className="mt-6 text-center text-sm text-muted">
           Don&apos;t have an account?{" "}
+
           <Link
             href="/signup"
             className="font-medium text-brand-700 transition hover:text-brand-800"
