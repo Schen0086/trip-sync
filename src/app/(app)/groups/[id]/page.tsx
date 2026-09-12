@@ -898,7 +898,7 @@ export default async function GroupPage({
                     />
 
                     <ConfirmActionButton
-                      message="Generate a new code? The current code will stop working."
+                      message="Generate a new code? The current code will stop working, and another code cannot be generated for 24 hours."
                       className="cursor-pointer rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium text-ink transition hover:bg-surface-hover"
                     >
                       Generate new code
@@ -908,7 +908,7 @@ export default async function GroupPage({
               )}
 
               <p className="mt-4 text-xs text-subtle">
-                Generating a new code immediately invalidates the previous one.
+                Generating a new code immediately invalidates the previous one. The invite code can be regenerated once every 24 hours.
               </p>
             </div>
           </section>

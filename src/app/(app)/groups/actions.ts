@@ -294,30 +294,55 @@ export async function addGroupMember(
 export async function regenerateGroupCode(
   formData: FormData
 ) {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
-  // Check authentication
-  const { data, error: authError } =
-    await supabase.auth.getClaims();
 
-  if (authError || !data?.claims) {
-    redirect("/login");
+  // Check authentication.
+  const {
+    data,
+    error:
+      authError,
+  } =
+    await supabase.auth
+      .getClaims();
+
+
+  if (
+    authError ||
+    !data?.claims
+  ) {
+    redirect(
+      "/login"
+    );
   }
+
 
   const groupId =
-    formData.get("groupId") as string;
+    formData.get(
+      "groupId"
+    ) as string;
+
 
   if (!groupId) {
-    redirect("/groups");
+    redirect(
+      "/groups"
+    );
   }
 
-  // Regenerate code
-  const { error } = await supabase.rpc(
-    "regenerate_group_code",
-    {
-      target_group_id: groupId,
-    }
-  );
+
+  // Regenerate code.
+  const {
+    error,
+  } =
+    await supabase.rpc(
+      "regenerate_group_code",
+      {
+        target_group_id:
+          groupId,
+      }
+    );
+
 
   if (error) {
     console.error(
@@ -325,19 +350,34 @@ export async function regenerateGroupCode(
       error
     );
 
+
+    const cooldownError =
+      error.message.includes(
+        "GROUP_CODE_REGENERATION_COOLDOWN"
+      ) ||
+      error.details?.includes(
+        "once every 24 hours"
+      );
+
+
     redirect(
       `/groups/${groupId}?error=${encodeURIComponent(
-        "Unable to regenerate group code"
+        cooldownError
+          ? "The invite code can only be regenerated once every 24 hours."
+          : "Unable to regenerate group code"
       )}`
     );
   }
 
-  // Refresh group
-  revalidatePath(`/groups/${groupId}`);
+
+  revalidatePath(
+    `/groups/${groupId}`
+  );
+
 
   redirect(
     `/groups/${groupId}?success=${encodeURIComponent(
-      "New group code generated"
+      "New group code generated. It can be regenerated again in 24 hours."
     )}`
   );
 }
