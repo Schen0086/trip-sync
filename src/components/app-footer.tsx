@@ -74,9 +74,11 @@ export default function AppFooter() {
 
           {/* Email */}
           <a
-            href="mailto:tripsync.app.emails@gmail.com"
+            href="https://mail.google.com/mail/?view=cm&fs=1&to=tripsync.app.emails@gmail.com"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-sm font-medium text-muted transition hover:text-ink focus:outline-none focus:ring-4 focus:ring-brand-100"
-            aria-label="Email TripSync"
+            aria-label="Email TripSync using Gmail"
           >
             <svg
               aria-hidden="true"
