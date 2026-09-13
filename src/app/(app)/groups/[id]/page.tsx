@@ -25,6 +25,8 @@ import {
   transferGroupOwnership,
 } from "./actions";
 
+import SubmitButton from "@/components/submit-button";
+
 type GroupPageProps = {
   params: Promise<{
     id: string;
@@ -960,12 +962,13 @@ export default async function GroupPage({
                     className="min-w-0 flex-1 rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
                   />
 
-                  <button
+                  <SubmitButton
+                    pendingLabel="Adding member..."
                     type="submit"
                     className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
                   >
                     Add member
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
             )}
@@ -1107,12 +1110,13 @@ export default async function GroupPage({
                               </option>
                             </select>
 
-                            <button
+                            <SubmitButton
+                              pendingLabel="Saving..."
                               type="submit"
                               className="cursor-pointer rounded-xl border border-line bg-surface-soft px-3.5 py-2 text-sm font-medium text-ink transition hover:bg-surface-hover"
                             >
                               Save
-                            </button>
+                            </SubmitButton>
                           </form>
 
                           {canRemove && (
@@ -1340,12 +1344,13 @@ export default async function GroupPage({
                     />
                   </div>
 
-                  <button
+                  <SubmitButton
+                    pendingLabel="Saving changes..."
                     type="submit"
                     className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
                   >
                     Save changes
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
 
@@ -1540,12 +1545,13 @@ export default async function GroupPage({
                     />
 
                     {isClosed ? (
-                      <button
+                      <SubmitButton
+                        pendingLabel="Reopening..."
                         type="submit"
                         className="cursor-pointer rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-hover"
                       >
                         Reopen group
-                      </button>
+                      </SubmitButton>
                     ) : (
                       <ConfirmActionButton
                         message="Close this group? Members will still be able to view it, but nobody will be able to join and no new trips can be created until you reopen it."

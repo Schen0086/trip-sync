@@ -752,7 +752,7 @@ export default async function GroupsPage({
                   maxLength={
                     60
                   }
-                  placeholder="UCD Friends"
+                  placeholder="Travel Friends"
                   className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
                 />
               </div>

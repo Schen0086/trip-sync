@@ -193,7 +193,7 @@ export default async function NewGroupTripPage({
                   id="name"
                   name="name"
                   type="text"
-                  placeholder="UCD Friends"
+                  placeholder="Travel Friends"
                   required
                   maxLength={60}
                   className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"

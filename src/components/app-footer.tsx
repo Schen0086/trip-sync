@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+
 export default function AppFooter() {
   const currentYear =
     new Date().getFullYear();
@@ -22,8 +25,34 @@ export default function AppFooter() {
         </div>
 
 
-        {/* Contact and social links */}
+        {/* Privacy, contact and social links */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+          {/* Privacy */}
+          <Link
+            href="/privacy"
+            className="inline-flex items-center gap-2 text-sm font-medium text-muted transition hover:text-ink focus:outline-none focus:ring-4 focus:ring-brand-100"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-5 w-5 shrink-0"
+            >
+              <path d="M12 3 5 6v5c0 4.6 2.9 8.7 7 10 4.1-1.3 7-5.4 7-10V6l-7-3Z" />
+
+              <path d="m9.5 12 1.7 1.7 3.5-3.7" />
+            </svg>
+
+            <span>
+              Privacy Notice
+            </span>
+          </Link>
+
+
           {/* Instagram */}
           <a
             href="https://www.instagram.com/tripsync_webapp/"

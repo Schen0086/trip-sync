@@ -6,6 +6,7 @@ import {
   deleteTrip,
   updateTrip,
 } from "../../actions";
+import SubmitButton from "@/components/submit-button";
 
 type EditTripPageProps = {
   params: Promise<{
@@ -324,12 +325,12 @@ export default async function EditTripPage({
 
             {/* Save */}
             <div className="flex justify-end border-t border-line pt-6">
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Saving changes..."
                 className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
               >
                 Save changes
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>

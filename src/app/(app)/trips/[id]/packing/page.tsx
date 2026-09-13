@@ -24,6 +24,8 @@ import {
 
 import PersonName from "@/components/person-name";
 
+import SubmitButton from "@/components/submit-button";
+
 type PackingPageProps = {
   params: Promise<{
     id: string;
@@ -956,12 +958,12 @@ export default async function PackingPage({
                   />
                 </div>
 
-                <button
-                  type="submit"
+                <SubmitButton
+                  pendingLabel="Adding item..."
                   className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast"
                 >
                   Add item
-                </button>
+                </SubmitButton>
               </form>
             </details>
 

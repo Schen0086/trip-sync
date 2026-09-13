@@ -22,6 +22,7 @@ import {
   updateProfileSettings,
 } from "./actions";
 
+import SubmitButton from "@/components/submit-button";
 
 type SettingsPageProps = {
   searchParams: Promise<{
@@ -362,7 +363,7 @@ export default async function SettingsPage({
                       ?.username ??
                     ""
                   }
-                  placeholder="John"
+                  placeholder="john_doe123"
                   autoComplete="username"
                   disabled={
                     usernameCooldown
@@ -414,17 +415,15 @@ export default async function SettingsPage({
 
             {/* Save profile */}
             <div className="flex justify-end border-t border-line pt-5">
-              <button
-                type="submit"
-                disabled={
-                  bothProfileFieldsLocked
-                }
+              <SubmitButton
+                pendingLabel="Saving profile..."
+                disabled={bothProfileFieldsLocked}
                 className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {bothProfileFieldsLocked
                   ? "Profile changes locked"
                   : "Save profile"}
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>
@@ -526,19 +525,15 @@ export default async function SettingsPage({
 
             {/* Change email */}
             <div className="flex justify-end border-t border-line pt-5">
-              <button
-                type="submit"
-                disabled={
-                  emailCooldown
-                    .isLocked
-                }
+              <SubmitButton
+                pendingLabel="Requesting change..."
+                disabled={emailCooldown.isLocked}
                 className="cursor-pointer rounded-xl border border-line bg-surface-soft px-5 py-2.5 text-sm font-medium text-ink transition hover:border-line-strong hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {emailCooldown
-                  .isLocked
+                {emailCooldown.isLocked
                   ? "Email change locked"
                   : "Change email"}
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>
@@ -630,12 +625,13 @@ export default async function SettingsPage({
 
             {/* Change password */}
             <div className="flex justify-end border-t border-line pt-5">
-              <button
+              <SubmitButton
+                pendingLabel="Changing password..."
                 type="submit"
                 className="cursor-pointer rounded-xl border border-line bg-surface-soft px-5 py-2.5 text-sm font-medium text-ink transition hover:border-line-strong hover:bg-surface-hover focus:outline-none focus:ring-4 focus:ring-brand-100"
               >
                 Change password
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>

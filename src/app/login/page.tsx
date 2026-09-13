@@ -67,6 +67,7 @@ export default async function LoginPage({
           </p>
         </div>
 
+
         {params.error && (
           <div
             role="alert"
@@ -78,6 +79,7 @@ export default async function LoginPage({
           </div>
         )}
 
+
         {params.success && (
           <div
             role="status"
@@ -88,6 +90,7 @@ export default async function LoginPage({
             }
           </div>
         )}
+
 
         <form
           action={
@@ -113,6 +116,7 @@ export default async function LoginPage({
               className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
             />
           </div>
+
 
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-4">
@@ -141,6 +145,7 @@ export default async function LoginPage({
             />
           </div>
 
+
           <SubmitButton
             pendingLabel="Logging in..."
             className="w-full cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
@@ -152,11 +157,23 @@ export default async function LoginPage({
 
         <p className="mt-6 text-center text-sm text-muted">
           Don&apos;t have an account?{" "}
+
           <Link
             href="/signup"
             className="font-medium text-brand-700 transition hover:text-brand-800"
           >
             Sign up
+          </Link>
+        </p>
+
+
+        {/* Privacy */}
+        <p className="mt-4 text-center text-xs text-subtle">
+          <Link
+            href="/privacy"
+            className="font-medium text-brand-700 transition hover:text-brand-800"
+          >
+            Privacy Notice
           </Link>
         </p>
       </div>

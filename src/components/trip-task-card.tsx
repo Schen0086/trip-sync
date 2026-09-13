@@ -21,6 +21,8 @@ import {
   type TripTask,
 } from "@/lib/tasks";
 
+import SubmitButton from "@/components/submit-button";
+
 
 type TripTaskCardProps = {
   task: TripTask;
@@ -475,20 +477,22 @@ export function TripTaskCard({
                 }
               />
 
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel={
+                  task.status === "completed"
+                    ? "Reopening..."
+                    : "Completing..."
+                }
                 className={
-                  task.status ===
-                  "completed"
+                  task.status === "completed"
                     ? "cursor-pointer rounded-xl border border-line bg-surface-soft px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-hover"
                     : "cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
                 }
               >
-                {task.status ===
-                "completed"
+                {task.status === "completed"
                   ? "Reopen"
                   : "Mark complete"}
-              </button>
+              </SubmitButton>
             </form>
           )}
 
@@ -515,12 +519,12 @@ export function TripTaskCard({
                 }
               />
 
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Taking task..."
                 className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
               >
                 Take this task
-              </button>
+              </SubmitButton>
             </form>
           )}
 
@@ -547,12 +551,12 @@ export function TripTaskCard({
                 }
               />
 
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Releasing..."
                 className="cursor-pointer rounded-xl border border-line bg-surface-soft px-4 py-2.5 text-sm font-medium text-muted transition hover:bg-surface-hover hover:text-ink"
               >
                 Release task
-              </button>
+              </SubmitButton>
             </form>
           )}
         </div>
@@ -804,12 +808,12 @@ export function TripTaskCard({
               </div>
 
 
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Saving changes..."
                 className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
               >
                 Save changes
-              </button>
+              </SubmitButton>
             </form>
           </details>
         )}

@@ -8,6 +8,7 @@ import {
   getItineraryTypeLabel,
   type ItineraryItemType,
 } from "@/lib/itinerary";
+import SubmitButton from "@/components/submit-button";
 
 type NewItemPageProps = {
   params: Promise<{
@@ -235,15 +236,19 @@ export default async function NewItemPage({
             />
 
             <div className="mt-8 flex justify-end border-t border-line pt-6">
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel={
+                  planningStatus === "suggested"
+                    ? "Adding suggestion..."
+                    : "Adding to itinerary..."
+                }
                 className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
               >
                 {planningStatus ===
                 "suggested"
                   ? "Add suggestion"
                   : "Add to itinerary"}
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>

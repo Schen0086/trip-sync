@@ -13,6 +13,7 @@ import {
   updateSuggestionComment,
 } from "@/app/(app)/trips/[id]/voting/discussion-actions";
 import { createClient } from "@/lib/supabase/server";
+import SubmitButton from "@/components/submit-button";
 
 
 type CommentAuthor = {
@@ -786,12 +787,12 @@ export default async function SuggestionDiscussion({
                 Maximum 2,000 characters.
               </p>
 
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Posting..."
                 className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
               >
                 Post comment
-              </button>
+              </SubmitButton>
             </div>
           </form>
         )}

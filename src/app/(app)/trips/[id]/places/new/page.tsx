@@ -10,6 +10,7 @@ import {
 import {
   saveManualPlace,
 } from "../actions";
+import SubmitButton from "@/components/submit-button";
 
 type NewPlacePageProps = {
   params: Promise<{
@@ -188,12 +189,12 @@ export default async function NewPlacePage({
 
             {/* Save */}
             <div className="flex justify-end border-t border-line pt-6">
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Saving place..."
                 className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
               >
                 Save place
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>

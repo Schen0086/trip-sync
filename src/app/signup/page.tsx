@@ -178,6 +178,22 @@ export default async function SignupPage({
           >
             Sign up
           </SubmitButton>
+
+
+          {/* Privacy notice */}
+          <p className="text-center text-xs leading-5 text-subtle">
+            Before creating an
+            account, please read
+            the{" "}
+
+            <Link
+              href="/privacy"
+              className="font-medium text-brand-700 transition hover:text-brand-800"
+            >
+              TripSync Privacy Notice
+            </Link>
+            .
+          </p>
         </form>
 
 

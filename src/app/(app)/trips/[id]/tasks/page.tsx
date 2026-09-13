@@ -29,6 +29,8 @@ import {
   type TripTask,
 } from "@/lib/tasks";
 
+import SubmitButton from "@/components/submit-button";
+
 
 type TasksPageProps = {
   params: Promise<{
@@ -1523,12 +1525,12 @@ export default async function TasksPage({
               </div>
 
 
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Adding responsibility..."
                 className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700"
               >
                 Add responsibility
-              </button>
+              </SubmitButton>
             </form>
           </details>
         )}

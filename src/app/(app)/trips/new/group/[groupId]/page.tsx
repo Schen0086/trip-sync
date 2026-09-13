@@ -157,7 +157,7 @@ export default async function GroupTripDetailsPage({
                   id="name"
                   name="name"
                   type="text"
-                  placeholder="Ski Trip 2027"
+                  placeholder="Summer Getaway"
                   required
                   maxLength={80}
                   className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
@@ -177,7 +177,7 @@ export default async function GroupTripDetailsPage({
                   id="destination"
                   name="destination"
                   type="text"
-                  placeholder="Mayrhofen, Austria"
+                  placeholder="Barcelona, Spain"
                   required
                   maxLength={120}
                   className="w-full rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
@@ -264,7 +264,7 @@ export default async function GroupTripDetailsPage({
                   id="description"
                   name="description"
                   rows={4}
-                  placeholder="A week of skiing, nightlife and activities."
+                  placeholder="A group trip with activities, food and sightseeing."
                   maxLength={500}
                   className="w-full resize-none rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
                 />

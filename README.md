@@ -2,7 +2,11 @@
 
 TripSync is a travel planning web application I designed for individuals and friend groups to organise trips in one place.
 
-It combines itinerary planning, group voting and discussions, shared expenses, packing, responsibilities, maps, weather, shared photos, notifications, and real-time collaboration into a single responsive application.
+It combines itinerary planning, group collaboration, voting and discussions, shared expenses, packing, responsibilities, maps, weather, photos, notifications, and real-time updates into a single responsive application.
+
+**Status:** In Progress — publicly deployed and undergoing final production testing.
+
+**Live app:** https://trip-sync-navy.vercel.app
 
 ## Features
 
@@ -39,6 +43,7 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Responsive desktop and mobile layouts
 - Light and dark themes
 - Secure email-based password recovery
+- Public privacy notice with account and data deletion contact information
 
 ## Tech Stack
 
@@ -64,6 +69,10 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Geoapify
 - Open-Meteo
 
+### Deployment
+
+- Vercel
+
 ## Technical Highlights
 
 - Server and Client Components using the Next.js App Router
@@ -85,3 +94,20 @@ It combines itinerary planning, group voting and discussions, shared expenses, p
 - Secure user-managed profile images using Supabase Storage and Storage RLS policies
 - Map and itinerary deep linking for location-focused trip navigation
 - Multi-day transport visualisation for multi-destination itineraries
+- Public privacy information covering stored data, third-party services and deletion requests
+
+## Privacy
+
+TripSync's privacy notice is available at:
+
+https://trip-sync-navy.vercel.app/privacy
+
+Privacy and account deletion requests can be sent to:
+
+tripsync.app.emails@gmail.com
+
+## Contact
+
+Instagram: https://www.instagram.com/tripsync_webapp/
+
+Email: tripsync.app.emails@gmail.com
