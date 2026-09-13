@@ -6,6 +6,7 @@ import {
   usePathname,
 } from "next/navigation";
 
+import AppFooter from "@/components/app-footer";
 import MobileNavMenu from "@/components/mobile-nav-menu";
 import NotificationMenu from "@/components/notification-menu";
 import ProfileMenu from "@/components/profile-menu";
@@ -50,7 +51,7 @@ export default function AppShell({
 
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="flex min-h-screen flex-col bg-canvas">
       {/* App header */}
       <header className="sticky top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-2 sm:px-6">
@@ -167,7 +168,14 @@ export default function AppShell({
       </header>
 
 
-      {children}
+      {/* Page content */}
+      <div className="flex-1">
+        {children}
+      </div>
+
+
+      {/* Shared footer */}
+      <AppFooter />
     </div>
   );
 }
