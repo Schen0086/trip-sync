@@ -846,12 +846,12 @@ export default async function GroupsPage({
                   className="min-w-0 flex-1 rounded-xl border border-line bg-surface-soft px-3.5 py-2.5 font-mono uppercase tracking-widest text-ink outline-none transition placeholder:text-subtle focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
                 />
 
-                <button
+                <SubmitButton
                   type="submit"
                   className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
                 >
                   Join group
-                </button>
+                </SubmitButton>
               </div>
             </form>
           </details>

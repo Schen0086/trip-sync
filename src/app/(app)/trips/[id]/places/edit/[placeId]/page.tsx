@@ -13,6 +13,7 @@ import {
   deleteSavedPlace,
   updateSavedPlace,
 } from "../../actions";
+import SubmitButton from "@/components/submit-button";
 
 type EditPlacePageProps = {
   params: Promise<{
@@ -258,12 +259,12 @@ export default async function EditPlacePage({
 
             {/* Save */}
             <div className="flex justify-end border-t border-line pt-6">
-              <button
+              <SubmitButton
                 type="submit"
                 className="cursor-pointer rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-brand-contrast"
               >
                 Save changes
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>

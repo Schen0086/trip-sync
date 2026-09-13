@@ -27,6 +27,7 @@ import {
   formatActivityTimestamp,
   type NotificationRecord,
 } from "@/lib/activity";
+import SubmitButton from "@/components/submit-button";
 
 
 type NotificationMenuProps = {
@@ -248,12 +249,12 @@ export default function NotificationMenu({
                 }
                 className="shrink-0"
               >
-                <button
+                <SubmitButton
                   type="submit"
                   className="cursor-pointer whitespace-nowrap text-xs font-medium text-brand-700"
                 >
                   Mark all read
-                </button>
+                </SubmitButton>
               </form>
             )}
           </div>
@@ -312,7 +313,7 @@ export default function NotificationMenu({
                           }
                         />
 
-                        <button
+                        <SubmitButton
                           type="submit"
                           className="w-full cursor-pointer rounded-lg p-1 text-left transition hover:bg-surface-hover"
                         >
@@ -359,7 +360,7 @@ export default function NotificationMenu({
                               </p>
                             </div>
                           </div>
-                        </button>
+                        </SubmitButton>
                       </form>
 
 

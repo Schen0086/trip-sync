@@ -306,7 +306,7 @@ export default async function PackingPage({
           value={item.id}
         />
 
-        <button
+        <SubmitButton
           type="submit"
           aria-label={
             item.is_packed
@@ -333,7 +333,7 @@ export default async function PackingPage({
               <path d="m5 12 4 4L19 6" />
             </svg>
           )}
-        </button>
+        </SubmitButton>
       </form>
     );
   }
@@ -604,13 +604,13 @@ export default async function PackingPage({
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <button
+                    <SubmitButton
                       type="submit"
                       className="cursor-pointer rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-brand-contrast"
                     >
                       Save
                       changes
-                    </button>
+                    </SubmitButton>
                   </div>
                 </form>
 
@@ -1158,13 +1158,13 @@ export default async function PackingPage({
                     />
                   </div>
 
-                  <button
+                  <SubmitButton
                     type="submit"
                     className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-brand-contrast"
                   >
                     Add shared
                     item
-                  </button>
+                  </SubmitButton>
                 </form>
               </details>
             )}
